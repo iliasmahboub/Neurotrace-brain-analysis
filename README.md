@@ -97,5 +97,5 @@ python backend/pipeline.py your_image.tif -o results/overlay.png
 
 **Ilias Mahboub**
 Molecular Biosciences · Duke University / Duke Kunshan University
-Research Trainee - Dzirasa Lab (Duke) · Yuan Lab (SJTU-SM)
+Research Trainee @ Dzirasa Lab (Duke SM) · Yuan Lab (SJTU-SM) · Remy Lab
 [im132@duke.edu](mailto:im132@duke.edu)
