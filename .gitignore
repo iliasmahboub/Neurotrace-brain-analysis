@@ -1,0 +1,23 @@
+# Virtual environment
+backend/venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pipeline outputs
+data/sample/output.png
+
+# Environment
+.env
