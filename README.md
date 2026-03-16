@@ -1,4 +1,4 @@
-# NeuroTrace
+# NeuroTrace V0
 ### Automated cFos+ Cell Detection in Fluorescence Brain Slices · Cellpose Segmentation · Multi-Channel TIFF
 
 A reproducible cell detection pipeline for immunofluorescence brain slice images. Takes multi-channel TIFF acquisitions (DAPI + cFos), runs instance segmentation via Cellpose, and outputs annotated overlay figures with cell counts. Built for cFos immediate early gene mapping in mouse brain tissue.
