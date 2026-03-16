@@ -45,7 +45,7 @@ def load_and_normalize(tiff_path: str) -> tuple[np.ndarray, np.ndarray]:
 def detect_cells(cfos: np.ndarray, sigma: float = 1.0) -> tuple[np.ndarray, int]:
     """Denoise the cFos channel and run Cellpose segmentation."""
     cfos_smooth = gaussian(cfos, sigma=sigma)
-    model = models.CellposeModel(gpu=False)
+    model = models.CellposeModel(gpu=True)
     masks, flows, styles = model.eval(cfos_smooth, diameter=None)
     n_cells = masks.max()
     return masks, int(n_cells)
