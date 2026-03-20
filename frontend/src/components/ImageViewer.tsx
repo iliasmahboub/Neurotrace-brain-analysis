@@ -197,10 +197,11 @@ export function ImageViewer({
               <span>
                 x:{cursorPos.x} y:{cursorPos.y}
                 {image.channels.map((ch, i) => {
-                  const val = ch[cursorPos.y * image.width + cursorPos.x];
+                  const idx = cursorPos.y * image.width + cursorPos.x;
+                  const val = idx >= 0 && idx < ch.length ? ch[idx] : 0;
                   return (
                     <span key={i} className="ml-2" style={{ color: channels[i]?.color ?? '#fff' }}>
-                      {image.channelNames[i]}:{val.toFixed(3)}
+                      {image.channelNames[i]}:{(val ?? 0).toFixed(3)}
                     </span>
                   );
                 })}
