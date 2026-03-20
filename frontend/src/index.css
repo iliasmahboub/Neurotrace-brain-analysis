@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #161822;
+  --bg-panel: #1c1f2e;
+  --bg-hover: #252840;
+  --bg-active: #2a2e4a;
+  --border: #2a2d3e;
+  --border-light: #363a50;
+  --text-primary: #e4e6ef;
+  --text-secondary: #8b8fa3;
+  --text-muted: #5e6275;
+  --accent: #4ea8f6;
+  --accent-dim: rgba(78, 168, 246, 0.15);
+  --accent-hover: #6cb8f9;
+  --success: #4ade80;
+  --success-dim: rgba(74, 222, 128, 0.15);
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.15);
+  --channel-dapi: #4488ff;
+  --channel-cfos: #44ff66;
+  --channel-red: #ff4444;
+}
+
+@theme {
+  --color-bg-primary: #0f1117;
+  --color-bg-secondary: #161822;
+  --color-bg-panel: #1c1f2e;
+  --color-bg-hover: #252840;
+  --color-bg-active: #2a2e4a;
+  --color-border: #2a2d3e;
+  --color-border-light: #363a50;
+  --color-text-primary: #e4e6ef;
+  --color-text-secondary: #8b8fa3;
+  --color-text-muted: #5e6275;
+  --color-accent: #4ea8f6;
+  --color-accent-dim: rgba(78, 168, 246, 0.15);
+  --color-accent-hover: #6cb8f9;
+  --color-success: #4ade80;
+  --color-success-dim: rgba(74, 222, 128, 0.15);
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-danger-dim: rgba(239, 68, 68, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+select {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+select:focus {
+  border-color: var(--accent);
+}
