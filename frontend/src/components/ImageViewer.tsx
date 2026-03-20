@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
+import { Upload } from 'lucide-react';
 import type { ImageData as NTImageData, ChannelState, DetectionResult, ViewState } from '../types';
 import { renderChannels, renderOverlay } from '../lib/renderer';
 
