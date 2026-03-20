@@ -23,10 +23,13 @@ const DEFAULT_PARAMS: DetectionParams = {
   autoThreshold: true,
 };
 
+const RGB_COLORS = ['#ff4444', '#44ff44', '#4444ff'];
+
 function initChannelStates(image: NTImageData): ChannelState[] {
+  const isRGB = image.channelNames[0] === 'Red';
   return image.channelNames.map((_, i) => ({
     visible: true,
-    color: CHANNEL_COLORS[i % CHANNEL_COLORS.length],
+    color: isRGB ? RGB_COLORS[i] : CHANNEL_COLORS[i % CHANNEL_COLORS.length],
     brightness: 0,
     contrast: 1,
   }));

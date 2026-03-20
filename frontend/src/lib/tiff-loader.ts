@@ -19,10 +19,11 @@ function normalizeChannel(ch: Float64Array): void {
   }
 }
 
-function makeChannelNames(count: number): string[] {
+function makeChannelNames(count: number, isRGB: boolean): string[] {
   if (count === 1) return ['Grayscale'];
+  if (isRGB && count === 3) return ['Red', 'Green', 'Blue'];
   if (count === 2) return ['DAPI', 'cFos'];
-  if (count === 3) return ['DAPI', 'cFos', 'Ch3'];
+  if (count === 3) return ['Ch1', 'Ch2', 'Ch3'];
   return Array.from({ length: count }, (_, i) => `Ch${i + 1}`);
 }
 
@@ -49,10 +50,21 @@ export async function loadTiff(file: File): Promise<ImageData> {
 
   const channels: Float64Array[] = [];
 
-  if (imageCount >= 2 && spp === 1) {
-    // Multi-page TIFF: each page is a separate channel
+  // Count how many pages share the same dimensions as page 0
+  // (skip thumbnails / reduced resolution pages)
+  let fullResPages = 0;
+  for (let i = 0; i < imageCount; i++) {
+    const img = await tiff.getImage(i);
+    if (img.getWidth() === width && img.getHeight() === height && img.getSamplesPerPixel() === 1) {
+      fullResPages++;
+    }
+  }
+
+  if (fullResPages >= 2 && spp === 1) {
+    // Multi-page TIFF where each full-res page is a separate channel
     for (let i = 0; i < imageCount; i++) {
       const image = await tiff.getImage(i);
+      if (image.getWidth() !== width || image.getHeight() !== height) continue;
       const rasters = await image.readRasters();
       const band = rasters[0] as any;
       const ch = new Float64Array(width * height);
@@ -63,7 +75,7 @@ export async function loadTiff(file: File): Promise<ImageData> {
       channels.push(ch);
     }
   } else {
-    // Single page with multiple samples per pixel, or single channel
+    // Single page (or multi-sample page): split bands into channels
     const rasters = await firstImage.readRasters();
     for (let c = 0; c < rasters.length; c++) {
       const band = rasters[c] as any;
@@ -84,7 +96,7 @@ export async function loadTiff(file: File): Promise<ImageData> {
     width,
     height,
     channels,
-    channelNames: makeChannelNames(channels.length),
+    channelNames: makeChannelNames(channels.length, spp >= 3),
     bitDepth,
     fileName: file.name,
   };
