@@ -1,30 +1,11 @@
+import { fromArrayBuffer } from 'geotiff';
 import type { ImageData } from '../types';
 
 /**
- * Extract a grayscale channel from UTIF's decoded RGBA8 buffer.
- * After decodeImage(), ifd.data is always RGBA8 (4 bytes per pixel).
- * For grayscale pages, the intensity is in the R channel.
- */
-function extractGrayscaleFromRGBA8(
-  rgba: Uint8Array,
-  numPixels: number
-): Float64Array {
-  const ch = new Float64Array(numPixels);
-  for (let i = 0; i < numPixels; i++) {
-    ch[i] = rgba[i * 4] / 255;
-  }
-  return ch;
-}
-
-/**
  * Normalize a Float64Array to [0, 1] using min-max scaling.
- * Uses percentile-based normalization (0.1% - 99.9%) to handle
- * outlier pixels common in fluorescence microscopy.
  */
 function normalizeChannel(ch: Float64Array): void {
   if (ch.length === 0) return;
-
-  // Simple min-max first pass
   let min = Infinity, max = -Infinity;
   for (let i = 0; i < ch.length; i++) {
     if (ch[i] < min) min = ch[i];
@@ -38,9 +19,6 @@ function normalizeChannel(ch: Float64Array): void {
   }
 }
 
-/**
- * Build channel names from count.
- */
 function makeChannelNames(count: number): string[] {
   if (count === 1) return ['Grayscale'];
   if (count === 2) return ['DAPI', 'cFos'];
@@ -49,76 +27,57 @@ function makeChannelNames(count: number): string[] {
 }
 
 /**
- * Load a TIFF file and extract channels as normalized Float64Arrays.
- *
- * UTIF's decodeImage() always produces an RGBA8 buffer in ifd.data,
- * regardless of the original bit depth. For multi-page TIFFs (one
- * channel per page), we extract the R component from each page's
- * RGBA8 output. For single-page multi-sample images, we use toRGBA8
- * and split into RGB.
+ * Load a TIFF using geotiff, which handles LZW, JPEG, deflate,
+ * 8/16/32-bit, float, and virtually every microscopy TIFF format.
+ * Returns raw typed arrays with full dynamic range, not crushed to 8-bit.
  */
 export async function loadTiff(file: File): Promise<ImageData> {
   const buffer = await file.arrayBuffer();
-  const UTIF = await import('utif2');
-  const ifds = UTIF.decode(buffer);
+  const tiff = await fromArrayBuffer(buffer);
+  const imageCount = await tiff.getImageCount();
 
-  if (ifds.length === 0) {
+  if (imageCount === 0) {
     throw new Error('No image data found in TIFF file');
   }
 
-  // Decode all pages
-  for (const ifd of ifds) {
-    UTIF.decodeImage(buffer, ifd);
-  }
+  const firstImage = await tiff.getImage(0);
+  const width = firstImage.getWidth();
+  const height = firstImage.getHeight();
+  const bps = firstImage.getBitsPerSample();
+  const bitDepth = bps[0];
+  const spp = firstImage.getSamplesPerPixel();
 
-  const width = ifds[0].width;
-  const height = ifds[0].height;
-  const numPixels = width * height;
   const channels: Float64Array[] = [];
-  const bitDepth = ifds[0].t258?.[0] ?? 8;
 
-  if (ifds.length >= 2) {
-    // Multi-page TIFF: each IFD is one channel
-    for (const ifd of ifds) {
-      const rgba = UTIF.toRGBA8(ifd);
-      const ch = extractGrayscaleFromRGBA8(new Uint8Array(rgba.buffer, rgba.byteOffset, rgba.byteLength), ifd.width * ifd.height);
+  if (imageCount >= 2 && spp === 1) {
+    // Multi-page TIFF: each page is a separate channel
+    for (let i = 0; i < imageCount; i++) {
+      const image = await tiff.getImage(i);
+      const rasters = await image.readRasters();
+      const band = rasters[0] as any;
+      const ch = new Float64Array(width * height);
+      for (let j = 0; j < ch.length; j++) {
+        ch[j] = band[j];
+      }
       normalizeChannel(ch);
       channels.push(ch);
     }
   } else {
-    // Single page - extract from RGBA8
-    const ifd = ifds[0];
-    const rgba = UTIF.toRGBA8(ifd);
-    const samplesPerPixel = ifd.t277?.[0] ?? 1;
-
-    if (samplesPerPixel >= 3) {
-      // RGB or more - split into separate channels
-      for (let c = 0; c < 3; c++) {
-        const ch = new Float64Array(numPixels);
-        for (let i = 0; i < numPixels; i++) {
-          ch[i] = rgba[i * 4 + c] / 255;
-        }
-        normalizeChannel(ch);
-        channels.push(ch);
+    // Single page with multiple samples per pixel, or single channel
+    const rasters = await firstImage.readRasters();
+    for (let c = 0; c < rasters.length; c++) {
+      const band = rasters[c] as any;
+      const ch = new Float64Array(width * height);
+      for (let j = 0; j < ch.length; j++) {
+        ch[j] = band[j];
       }
-    } else {
-      // Grayscale
-      const ch = extractGrayscaleFromRGBA8(new Uint8Array(rgba.buffer, rgba.byteOffset, rgba.byteLength), numPixels);
       normalizeChannel(ch);
       channels.push(ch);
     }
   }
 
-  // If we got no usable channels, the TIFF format isn't supported
-  if (channels.length === 0 || channels.every(ch => {
-    let sum = 0;
-    for (let i = 0; i < ch.length; i++) sum += ch[i];
-    return sum === 0;
-  })) {
-    throw new Error(
-      'Could not decode TIFF pixel data. The file may use an unsupported compression format. ' +
-      'Try re-saving as uncompressed TIFF or converting to PNG.'
-    );
+  if (channels.length === 0) {
+    throw new Error('Could not extract any channels from TIFF');
   }
 
   return {
