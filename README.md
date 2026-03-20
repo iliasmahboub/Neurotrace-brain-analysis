@@ -4,7 +4,7 @@
 
 A browser-based analysis tool for immunofluorescence brain slice images. Upload a multi-channel TIFF, detect cFos+ cells, adjust parameters in real time, and export annotated figures and quantification data. No installation required.
 
-**[Launch NeuroTrace](https://iliasmahboub.github.io/neurotrace/)**
+**[Launch NeuroTrace](https://iliasmahboub.github.io/Neurotrace-brain-analysis/)**
 
 I am building this to replace the manual ImageJ/QuPath cell counting workflow that most neuroscience labs still do by hand. The goal is a complete pipeline from raw fluorescence images to publication-ready figures with per-region cell counts, starting with a clean browser UI and extending to atlas registration and batch processing.
 
