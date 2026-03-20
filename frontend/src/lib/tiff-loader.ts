@@ -1,8 +1,91 @@
 import type { ImageData } from '../types';
 
 /**
+ * Extract raw pixel values from a decoded UTIF IFD.
+ * Handles 8-bit, 16-bit, 32-bit integer and 32-bit float TIFFs.
+ * Returns a Float64Array normalized to [0, 1].
+ */
+function extractChannelFromIFD(
+  ifd: any,
+  width: number,
+  height: number,
+  channelIndex: number,
+  samplesPerPixel: number
+): Float64Array {
+  const bitsPerSample = ifd.t258?.[0] ?? 8;
+  const sampleFormat = ifd.t339?.[0] ?? 1; // 1=uint, 2=int, 3=float
+  const data = ifd.data;
+  const numPixels = width * height;
+  const ch = new Float64Array(numPixels);
+
+  if (!data || data.length === 0) {
+    return ch;
+  }
+
+  if (sampleFormat === 3 && bitsPerSample === 32) {
+    // 32-bit float
+    const floatView = new Float32Array(data.buffer, data.byteOffset, data.byteLength / 4);
+    for (let i = 0; i < numPixels; i++) {
+      ch[i] = floatView[i * samplesPerPixel + channelIndex];
+    }
+  } else if (bitsPerSample === 16) {
+    // 16-bit unsigned integer
+    const u16 = new Uint16Array(data.buffer, data.byteOffset, data.byteLength / 2);
+    for (let i = 0; i < numPixels; i++) {
+      ch[i] = u16[i * samplesPerPixel + channelIndex];
+    }
+  } else if (bitsPerSample === 8) {
+    // 8-bit unsigned integer
+    for (let i = 0; i < numPixels; i++) {
+      ch[i] = data[i * samplesPerPixel + channelIndex];
+    }
+  } else if (bitsPerSample === 32) {
+    // 32-bit unsigned integer
+    const u32 = new Uint32Array(data.buffer, data.byteOffset, data.byteLength / 4);
+    for (let i = 0; i < numPixels; i++) {
+      ch[i] = u32[i * samplesPerPixel + channelIndex];
+    }
+  } else {
+    // Fallback: try reading as bytes
+    for (let i = 0; i < numPixels; i++) {
+      ch[i] = data[i * samplesPerPixel + channelIndex];
+    }
+  }
+
+  return ch;
+}
+
+/**
+ * Normalize a Float64Array to [0, 1] using min-max scaling.
+ */
+function normalizeChannel(ch: Float64Array): void {
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < ch.length; i++) {
+    if (ch[i] < min) min = ch[i];
+    if (ch[i] > max) max = ch[i];
+  }
+  const range = max - min;
+  if (range > 0) {
+    for (let i = 0; i < ch.length; i++) {
+      ch[i] = (ch[i] - min) / range;
+    }
+  }
+}
+
+/**
+ * Build channel names from count.
+ */
+function makeChannelNames(count: number): string[] {
+  if (count === 1) return ['Grayscale'];
+  if (count === 2) return ['DAPI', 'cFos'];
+  if (count === 3) return ['DAPI', 'cFos', 'Ch3'];
+  return Array.from({ length: count }, (_, i) => `Ch${i + 1}`);
+}
+
+/**
  * Load a TIFF file and extract channels as normalized Float64Arrays.
- * Handles 8-bit, 16-bit, and 32-bit TIFFs with multiple pages (channels).
+ * Reads raw pixel data directly instead of going through toRGBA8,
+ * which preserves full 16-bit dynamic range for microscopy images.
  */
 export async function loadTiff(file: File): Promise<ImageData> {
   const buffer = await file.arrayBuffer();
@@ -20,80 +103,34 @@ export async function loadTiff(file: File): Promise<ImageData> {
 
   const width = ifds[0].width;
   const height = ifds[0].height;
-
-  // Determine if multi-page (each page = channel) or single page with interleaved channels
-  let channels: Float64Array[];
-  let channelNames: string[];
-  let bitDepth = 8;
+  const channels: Float64Array[] = [];
+  const bitDepth = ifds[0].t258?.[0] ?? 8;
 
   if (ifds.length >= 2) {
-    // Multi-page TIFF: each IFD is a channel
-    channels = [];
+    // Multi-page TIFF: each IFD is one channel (common for microscopy)
     for (const ifd of ifds) {
-      const rgba = UTIF.toRGBA8(ifd);
-      // Extract just the red channel from RGBA (grayscale data ends up in R)
-      const ch = new Float64Array(width * height);
-      for (let i = 0; i < width * height; i++) {
-        ch[i] = rgba[i * 4] / 255;
-      }
+      const spp = ifd.t277?.[0] ?? 1;
+      const ch = extractChannelFromIFD(ifd, ifd.width, ifd.height, 0, spp);
+      normalizeChannel(ch);
       channels.push(ch);
     }
-    channelNames = channels.length >= 2
-      ? ['DAPI', 'cFos', ...Array.from({ length: channels.length - 2 }, (_, i) => `Ch${i + 2}`)]
-      : ['Grayscale'];
-    bitDepth = (ifds[0] as any).t258?.[0] ?? 8;
   } else {
-    // Single page - could be grayscale or RGB
+    // Single page
     const ifd = ifds[0];
-    const samplesPerPixel = (ifd as any).t277?.[0] ?? 1;
-    bitDepth = (ifd as any).t258?.[0] ?? 8;
+    const samplesPerPixel = ifd.t277?.[0] ?? 1;
 
     if (samplesPerPixel >= 2) {
-      // Interleaved multi-channel in single page
-      const data = ifd.data;
-      channels = [];
-      for (let c = 0; c < Math.min(samplesPerPixel, 4); c++) {
-        const ch = new Float64Array(width * height);
-        const maxVal = (1 << bitDepth) - 1;
-        if (bitDepth <= 8) {
-          for (let i = 0; i < width * height; i++) {
-            ch[i] = (data as Uint8Array)[i * samplesPerPixel + c] / maxVal;
-          }
-        } else {
-          const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-          for (let i = 0; i < width * height; i++) {
-            ch[i] = view.getUint16((i * samplesPerPixel + c) * 2, true) / maxVal;
-          }
-        }
+      // Interleaved multi-channel in a single page
+      for (let c = 0; c < samplesPerPixel; c++) {
+        const ch = extractChannelFromIFD(ifd, width, height, c, samplesPerPixel);
+        normalizeChannel(ch);
         channels.push(ch);
       }
-      channelNames = samplesPerPixel >= 2
-        ? ['DAPI', 'cFos', ...Array.from({ length: samplesPerPixel - 2 }, (_, i) => `Ch${i + 2}`)]
-        : ['Grayscale'];
     } else {
-      // Single channel grayscale
-      const rgba = UTIF.toRGBA8(ifd);
-      const ch = new Float64Array(width * height);
-      for (let i = 0; i < width * height; i++) {
-        ch[i] = rgba[i * 4] / 255;
-      }
-      channels = [ch];
-      channelNames = ['Grayscale'];
-    }
-  }
-
-  // Normalize each channel to [0, 1]
-  for (const ch of channels) {
-    let min = Infinity, max = -Infinity;
-    for (let i = 0; i < ch.length; i++) {
-      if (ch[i] < min) min = ch[i];
-      if (ch[i] > max) max = ch[i];
-    }
-    const range = max - min;
-    if (range > 0) {
-      for (let i = 0; i < ch.length; i++) {
-        ch[i] = (ch[i] - min) / range;
-      }
+      // Single grayscale channel
+      const ch = extractChannelFromIFD(ifd, width, height, 0, 1);
+      normalizeChannel(ch);
+      channels.push(ch);
     }
   }
 
@@ -101,14 +138,14 @@ export async function loadTiff(file: File): Promise<ImageData> {
     width,
     height,
     channels,
-    channelNames,
+    channelNames: makeChannelNames(channels.length),
     bitDepth,
     fileName: file.name,
   };
 }
 
 /**
- * Load a standard image file (PNG, JPEG) as a single-channel grayscale.
+ * Load a standard image file (PNG, JPEG) as RGB channels.
  */
 export async function loadStandardImage(file: File): Promise<ImageData> {
   return new Promise((resolve, reject) => {
@@ -122,7 +159,6 @@ export async function loadStandardImage(file: File): Promise<ImageData> {
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, img.width, img.height);
 
-      // Extract RGB as separate channels
       const r = new Float64Array(img.width * img.height);
       const g = new Float64Array(img.width * img.height);
       const b = new Float64Array(img.width * img.height);
