@@ -44,7 +44,7 @@ export async function loadTiff(file: File): Promise<ImageData> {
   const firstImage = await tiff.getImage(0);
   const width = firstImage.getWidth();
   const height = firstImage.getHeight();
-  const bps = firstImage.getBitsPerSample();
+  const bps = firstImage.getBitsPerSample() as unknown as number[];
   const bitDepth = bps[0];
   const spp = firstImage.getSamplesPerPixel();
 
