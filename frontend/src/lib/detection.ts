@@ -1,4 +1,4 @@
-import type { DetectionParams, DetectionResult } from '../types';
+import type { DetectionParams, DetectionResult, CellInfo } from '../types';
 
 /**
  * Apply Gaussian blur to a single-channel image.
@@ -159,6 +159,214 @@ function connectedComponents(
 }
 
 /**
+ * Euclidean distance transform on a binary image.
+ * For each foreground pixel, compute the distance to the nearest background pixel.
+ * Uses the Meijster/Roerdink/Hesselink linear-time algorithm.
+ */
+function distanceTransform(
+  binary: Uint8Array,
+  width: number,
+  height: number
+): Float64Array {
+  const INF = width + height;
+  const dt = new Float64Array(width * height);
+
+  // Column pass: compute 1D distance along each column
+  for (let x = 0; x < width; x++) {
+    // Forward
+    dt[x] = binary[x] ? 0 : INF;
+    for (let y = 1; y < height; y++) {
+      const idx = y * width + x;
+      dt[idx] = binary[idx] ? 0 : dt[(y - 1) * width + x] + 1;
+    }
+    // Backward
+    for (let y = height - 2; y >= 0; y--) {
+      const idx = y * width + x;
+      if (dt[(y + 1) * width + x] + 1 < dt[idx]) {
+        dt[idx] = dt[(y + 1) * width + x] + 1;
+      }
+    }
+  }
+
+  // Row pass: compute 2D Euclidean distance
+  const result = new Float64Array(width * height);
+  const s = new Int32Array(width);
+  const t = new Int32Array(width);
+
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    let q = 0;
+    s[0] = 0;
+    t[0] = 0;
+
+    const f = (x: number) => dt[row + x];
+
+    for (let u = 1; u < width; u++) {
+      while (q >= 0 && (t[q] - s[q]) * (t[q] - s[q]) + f(s[q]) * f(s[q]) >
+                        (t[q] - u) * (t[q] - u) + f(u) * f(u)) {
+        q--;
+      }
+      if (q < 0) {
+        q = 0;
+        s[0] = u;
+      } else {
+        // Find separator
+        const sep = Math.ceil(
+          ((u * u - s[q] * s[q] + f(u) * f(u) - f(s[q]) * f(s[q])) / (2 * (u - s[q])))
+        );
+        if (sep <= width - 1) {
+          q++;
+          s[q] = u;
+          t[q] = sep;
+        }
+      }
+    }
+
+    for (let u = width - 1; u >= 0; u--) {
+      result[row + u] = Math.sqrt(
+        (u - s[q]) * (u - s[q]) + f(s[q]) * f(s[q])
+      );
+      if (u === t[q]) q--;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Watershed segmentation using distance transform.
+ * Finds local maxima in the distance map as seeds, then grows regions.
+ */
+function watershedSegmentation(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+  minArea: number
+): Int32Array {
+  const dist = distanceTransform(binary, width, height);
+
+  // Find local maxima as seeds (using a radius proportional to minArea)
+  const seedRadius = Math.max(2, Math.floor(Math.sqrt(minArea / Math.PI)));
+  const labels = new Int32Array(width * height);
+  let nextLabel = 0;
+
+  // Collect candidate peaks with their distance values
+  const peaks: Array<{ x: number; y: number; dist: number }> = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (!binary[idx]) continue;
+      const d = dist[idx];
+      if (d < 2) continue; // Skip thin regions
+
+      let isMax = true;
+      for (let dy = -seedRadius; dy <= seedRadius && isMax; dy++) {
+        for (let dx = -seedRadius; dx <= seedRadius && isMax; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          if (dist[ny * width + nx] > d) isMax = false;
+        }
+      }
+      if (isMax) peaks.push({ x, y, dist: d });
+    }
+  }
+
+  // Sort peaks by distance descending (strongest seeds first)
+  peaks.sort((a, b) => b.dist - a.dist);
+
+  // Place seeds, skipping peaks too close to an already-placed seed
+  const seedLabels: Array<{ x: number; y: number; label: number }> = [];
+  for (const peak of peaks) {
+    const idx = peak.y * width + peak.x;
+    if (labels[idx] !== 0) continue;
+
+    nextLabel++;
+    labels[idx] = nextLabel;
+    seedLabels.push({ x: peak.x, y: peak.y, label: nextLabel });
+
+    // Mark nearby area to prevent duplicate seeds
+    for (let dy = -seedRadius; dy <= seedRadius; dy++) {
+      for (let dx = -seedRadius; dx <= seedRadius; dx++) {
+        const nx = peak.x + dx, ny = peak.y + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const nIdx = ny * width + nx;
+        if (binary[nIdx] && labels[nIdx] === 0) {
+          // Only suppress, don't assign label yet
+          labels[nIdx] = -1; // temporary marker
+        }
+      }
+    }
+  }
+
+  // Reset temporary markers
+  for (let i = 0; i < labels.length; i++) {
+    if (labels[i] === -1) labels[i] = 0;
+  }
+
+  // Re-place seeds
+  for (const s of seedLabels) {
+    labels[s.y * width + s.x] = s.label;
+  }
+
+  // BFS watershed expansion: process pixels in order of decreasing distance
+  // Build sorted queue of all foreground pixels
+  const WATERSHED = -1;
+  const queue: Array<{ idx: number; dist: number }> = [];
+  for (let i = 0; i < binary.length; i++) {
+    if (binary[i]) queue.push({ idx: i, dist: dist[i] });
+  }
+  queue.sort((a, b) => b.dist - a.dist);
+
+  const dx4 = [1, -1, 0, 0];
+  const dy4 = [0, 0, 1, -1];
+
+  // Iterative flooding
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const item of queue) {
+      const i = item.idx;
+      if (labels[i] !== 0) continue;
+      if (!binary[i]) continue;
+
+      const y = Math.floor(i / width);
+      const x = i % width;
+
+      let neighborLabel = 0;
+      let conflict = false;
+
+      for (let d = 0; d < 4; d++) {
+        const nx = x + dx4[d], ny = y + dy4[d];
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const nl = labels[ny * width + nx];
+        if (nl > 0) {
+          if (neighborLabel === 0) {
+            neighborLabel = nl;
+          } else if (nl !== neighborLabel) {
+            conflict = true;
+          }
+        }
+      }
+
+      if (neighborLabel > 0 && !conflict) {
+        labels[i] = neighborLabel;
+        changed = true;
+      } else if (conflict) {
+        labels[i] = WATERSHED;
+      }
+    }
+  }
+
+  // Clean up watershed lines: set to 0 (background)
+  for (let i = 0; i < labels.length; i++) {
+    if (labels[i] < 0) labels[i] = 0;
+  }
+
+  return labels;
+}
+
+/**
  * Extract boundary pixels from a label image.
  */
 function findBoundaries(
@@ -217,22 +425,41 @@ export function detectCells(
     binary[i] = blurred[i] > threshold ? 1 : 0;
   }
 
-  // Connected components
-  onProgress?.('Finding connected components...');
-  const { labels, count } = connectedComponents(binary, width, height);
+  // Segmentation
+  let segLabels: Int32Array;
+  let segCount: number;
 
-  // Compute area and centroid per component
+  if (params.watershed) {
+    onProgress?.('Running watershed segmentation...');
+    segLabels = watershedSegmentation(binary, width, height, params.minArea);
+    // Count unique labels
+    const uniqueLabels = new Set<number>();
+    for (let i = 0; i < segLabels.length; i++) {
+      if (segLabels[i] > 0) uniqueLabels.add(segLabels[i]);
+    }
+    segCount = uniqueLabels.size;
+  } else {
+    onProgress?.('Finding connected components...');
+    const cc = connectedComponents(binary, width, height);
+    segLabels = cc.labels;
+    segCount = cc.count;
+  }
+
+  // Compute area, centroid, and mean intensity per component
   const areas = new Map<number, number>();
   const sumX = new Map<number, number>();
   const sumY = new Map<number, number>();
+  const sumIntensity = new Map<number, number>();
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const label = labels[y * width + x];
+      const idx = y * width + x;
+      const label = segLabels[idx];
       if (label === 0) continue;
       areas.set(label, (areas.get(label) ?? 0) + 1);
       sumX.set(label, (sumX.get(label) ?? 0) + x);
       sumY.set(label, (sumY.get(label) ?? 0) + y);
+      sumIntensity.set(label, (sumIntensity.get(label) ?? 0) + channelData[idx]);
     }
   }
 
@@ -252,15 +479,15 @@ export function detectCells(
     remapTable.set(label, ++newId);
   }
 
-  for (let i = 0; i < labels.length; i++) {
-    const label = labels[i];
+  for (let i = 0; i < segLabels.length; i++) {
+    const label = segLabels[i];
     if (label > 0 && remapTable.has(label)) {
       remapLabels[i] = remapTable.get(label)!;
     }
   }
 
-  // Build centroids
-  const centroids: Array<{ x: number; y: number; id: number; area: number }> = [];
+  // Build centroids with intensity
+  const centroids: CellInfo[] = [];
   for (const [oldLabel, newLabel] of remapTable) {
     const area = areas.get(oldLabel)!;
     centroids.push({
@@ -268,6 +495,7 @@ export function detectCells(
       y: Math.round(sumY.get(oldLabel)! / area),
       id: newLabel,
       area,
+      meanIntensity: sumIntensity.get(oldLabel)! / area,
     });
   }
 

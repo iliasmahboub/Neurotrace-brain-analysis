@@ -21,6 +21,7 @@ const DEFAULT_PARAMS: DetectionParams = {
   minArea: 10,
   maxArea: 5000,
   autoThreshold: true,
+  watershed: true,
 };
 
 const RGB_COLORS = ['#ff4444', '#44ff44', '#4444ff'];

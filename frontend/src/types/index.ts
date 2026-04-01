@@ -7,10 +7,18 @@ export interface ImageData {
   fileName: string;
 }
 
+export interface CellInfo {
+  id: number;
+  x: number;
+  y: number;
+  area: number;
+  meanIntensity: number;
+}
+
 export interface DetectionResult {
   labels: Int32Array;
   cellCount: number;
-  centroids: Array<{ x: number; y: number; id: number; area: number }>;
+  centroids: CellInfo[];
   boundaries: Uint8Array;
   width: number;
   height: number;
@@ -22,6 +30,7 @@ export interface DetectionParams {
   minArea: number;
   maxArea: number;
   autoThreshold: boolean;
+  watershed: boolean;
 }
 
 export interface ViewState {

@@ -5,9 +5,9 @@ import type { DetectionResult, ImageData as NTImageData } from '../types';
  */
 export function exportCSV(detection: DetectionResult, imageName: string): void {
   const rows = [
-    ['cell_id', 'centroid_x', 'centroid_y', 'area_px'].join(','),
+    ['cell_id', 'centroid_x', 'centroid_y', 'area_px', 'mean_intensity'].join(','),
     ...detection.centroids.map(c =>
-      [c.id, c.x, c.y, c.area].join(',')
+      [c.id, c.x, c.y, c.area, c.meanIntensity.toFixed(4)].join(',')
     ),
   ];
 

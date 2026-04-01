@@ -251,6 +251,21 @@ export function Sidebar({
             )}
           </div>
 
+          {/* Watershed toggle */}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={detectionParams.watershed}
+                onChange={e => onParamsChange({ watershed: e.target.checked })}
+                className="w-3 h-3 accent-blue-500"
+              />
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Watershed (split touching cells)
+              </span>
+            </label>
+          </div>
+
           {/* Min/Max area */}
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -375,10 +390,11 @@ export function Sidebar({
                   <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--accent)' }}>
                     Cell #{cell.id}
                   </div>
-                  <div className="grid grid-cols-3 gap-1 text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+                  <div className="grid grid-cols-2 gap-1 text-[10px]" style={{ color: 'var(--text-secondary)' }}>
                     <div>X: <span className="font-mono">{cell.x}</span></div>
                     <div>Y: <span className="font-mono">{cell.y}</span></div>
-                    <div>A: <span className="font-mono">{cell.area}px</span></div>
+                    <div>Area: <span className="font-mono">{cell.area}px</span></div>
+                    <div>Int: <span className="font-mono">{cell.meanIntensity.toFixed(3)}</span></div>
                   </div>
                 </div>
               );
@@ -397,6 +413,7 @@ export function Sidebar({
                       <th className="py-1 px-2 text-right font-medium">X</th>
                       <th className="py-1 px-2 text-right font-medium">Y</th>
                       <th className="py-1 px-2 text-right font-medium">Area</th>
+                      <th className="py-1 px-2 text-right font-medium">Int</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -422,6 +439,7 @@ export function Sidebar({
                         <td className="py-0.5 px-2 text-right font-mono">{cell.x}</td>
                         <td className="py-0.5 px-2 text-right font-mono">{cell.y}</td>
                         <td className="py-0.5 px-2 text-right font-mono">{cell.area}</td>
+                        <td className="py-0.5 px-2 text-right font-mono">{cell.meanIntensity.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
