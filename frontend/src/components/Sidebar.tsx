@@ -10,12 +10,17 @@ import {
   Layers,
   SlidersHorizontal,
   BarChart3,
+  Images,
+  X,
+  Zap,
+  Check,
 } from 'lucide-react';
 import type {
   ImageData as NTImageData,
   ChannelState,
   DetectionParams,
   DetectionResult,
+  BatchItem,
 } from '../types';
 
 interface SidebarProps {
@@ -25,6 +30,7 @@ interface SidebarProps {
   detectionParams: DetectionParams;
   onParamsChange: (updates: Partial<DetectionParams>) => void;
   onRunDetection: () => void;
+  onRunBatchDetection: () => void;
   isDetecting: boolean;
   detection: DetectionResult | null;
   showOverlay: boolean;
@@ -34,6 +40,10 @@ interface SidebarProps {
   selectedCell: number | null;
   activeChannel: number;
   onActiveChannelChange: (index: number) => void;
+  batch: BatchItem[];
+  activeBatchIndex: number;
+  onBatchSelect: (index: number) => void;
+  onBatchRemove: (index: number) => void;
 }
 
 function Section({
@@ -41,11 +51,13 @@ function Section({
   icon: Icon,
   children,
   defaultOpen = true,
+  badge,
 }: {
   title: string;
   icon: typeof Layers;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  badge?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -60,6 +72,12 @@ function Section({
       >
         <Icon size={13} />
         <span className="uppercase">{title}</span>
+        {badge && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-mono"
+            style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+            {badge}
+          </span>
+        )}
         <div className="flex-1" />
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
       </button>
@@ -77,6 +95,7 @@ export function Sidebar({
   detectionParams,
   onParamsChange,
   onRunDetection,
+  onRunBatchDetection,
   isDetecting,
   detection,
   showOverlay,
@@ -86,8 +105,12 @@ export function Sidebar({
   selectedCell,
   activeChannel,
   onActiveChannelChange,
+  batch,
+  activeBatchIndex,
+  onBatchSelect,
+  onBatchRemove,
 }: SidebarProps) {
-  if (!image) {
+  if (!image && batch.length === 0) {
     return (
       <div className="w-64 shrink-0 flex flex-col items-center justify-center border-l"
         style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
@@ -103,228 +126,298 @@ export function Sidebar({
     <div className="w-64 shrink-0 flex flex-col border-l overflow-y-auto"
       style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
 
-      {/* Channels */}
-      <Section title="Channels" icon={Layers}>
-        <div className="space-y-2">
-          {image.channelNames.map((name, i) => (
-            <div key={i}>
-              <div className="flex items-center gap-2 mb-1">
+      {/* Batch */}
+      {batch.length > 1 && (
+        <Section title="Batch" icon={Images} badge={String(batch.length)}>
+          <div className="space-y-0.5 max-h-40 overflow-y-auto">
+            {batch.map((item, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs cursor-pointer transition-colors group"
+                style={{
+                  background: i === activeBatchIndex ? 'var(--accent-dim)' : 'transparent',
+                  color: i === activeBatchIndex ? 'var(--accent)' : 'var(--text-secondary)',
+                }}
+                onMouseEnter={e => {
+                  if (i !== activeBatchIndex) e.currentTarget.style.background = 'var(--bg-hover)';
+                }}
+                onMouseLeave={e => {
+                  if (i !== activeBatchIndex) e.currentTarget.style.background = 'transparent';
+                }}
+                onClick={() => onBatchSelect(i)}
+              >
+                {item.detection ? (
+                  <Check size={10} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                ) : (
+                  <div className="w-2.5 h-2.5 rounded-full border shrink-0"
+                    style={{ borderColor: 'var(--text-muted)' }} />
+                )}
+                <span className="truncate flex-1 font-mono text-[10px]">
+                  {item.image.fileName}
+                </span>
+                {item.detection && (
+                  <span className="text-[9px] font-mono" style={{ color: 'var(--success)' }}>
+                    {item.detection.cellCount}
+                  </span>
+                )}
                 <button
-                  className="p-0.5 rounded transition-colors"
-                  style={{ color: channels[i]?.visible ? channels[i]?.color : 'var(--text-muted)' }}
-                  onClick={() => onChannelChange(i, { visible: !channels[i]?.visible })}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity"
+                  style={{ color: 'var(--text-muted)' }}
+                  onClick={e => { e.stopPropagation(); onBatchRemove(i); }}
                 >
-                  {channels[i]?.visible ? <Eye size={13} /> : <EyeOff size={13} />}
+                  <X size={10} />
                 </button>
-
-                <button
-                  className="flex-1 text-left text-xs py-0.5 px-1.5 rounded transition-colors"
-                  style={{
-                    color: activeChannel === i ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    background: activeChannel === i ? 'var(--bg-active)' : 'transparent',
-                  }}
-                  onClick={() => onActiveChannelChange(i)}
-                >
-                  {name}
-                </button>
-
-                <input
-                  type="color"
-                  value={channels[i]?.color ?? CHANNEL_COLORS[i]}
-                  onChange={e => onChannelChange(i, { color: e.target.value })}
-                  className="w-4 h-4 rounded cursor-pointer border-0 p-0"
-                  style={{ background: 'transparent' }}
-                />
               </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
-              {activeChannel === i && (
-                <div className="ml-5 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] w-12" style={{ color: 'var(--text-muted)' }}>Bright</span>
-                    <input
-                      type="range"
-                      min={-0.5}
-                      max={0.5}
-                      step={0.01}
-                      value={channels[i]?.brightness ?? 0}
-                      onChange={e => onChannelChange(i, { brightness: parseFloat(e.target.value) })}
-                      className="flex-1"
-                    />
-                    <span className="text-[10px] w-8 text-right font-mono" style={{ color: 'var(--text-muted)' }}>
-                      {((channels[i]?.brightness ?? 0) * 100).toFixed(0)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] w-12" style={{ color: 'var(--text-muted)' }}>Contr</span>
-                    <input
-                      type="range"
-                      min={0.2}
-                      max={5}
-                      step={0.05}
-                      value={channels[i]?.contrast ?? 1}
-                      onChange={e => onChannelChange(i, { contrast: parseFloat(e.target.value) })}
-                      className="flex-1"
-                    />
-                    <span className="text-[10px] w-8 text-right font-mono" style={{ color: 'var(--text-muted)' }}>
-                      {((channels[i]?.contrast ?? 1) * 100).toFixed(0)}
-                    </span>
-                  </div>
+      {/* Channels */}
+      {image && (
+        <Section title="Channels" icon={Layers}>
+          <div className="space-y-2">
+            {image.channelNames.map((name, i) => (
+              <div key={i}>
+                <div className="flex items-center gap-2 mb-1">
+                  <button
+                    className="p-0.5 rounded transition-colors"
+                    style={{ color: channels[i]?.visible ? channels[i]?.color : 'var(--text-muted)' }}
+                    onClick={() => onChannelChange(i, { visible: !channels[i]?.visible })}
+                  >
+                    {channels[i]?.visible ? <Eye size={13} /> : <EyeOff size={13} />}
+                  </button>
+
+                  <button
+                    className="flex-1 text-left text-xs py-0.5 px-1.5 rounded transition-colors"
+                    style={{
+                      color: activeChannel === i ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      background: activeChannel === i ? 'var(--bg-active)' : 'transparent',
+                    }}
+                    onClick={() => onActiveChannelChange(i)}
+                  >
+                    {name}
+                  </button>
+
+                  <input
+                    type="color"
+                    value={channels[i]?.color ?? CHANNEL_COLORS[i]}
+                    onChange={e => onChannelChange(i, { color: e.target.value })}
+                    className="w-4 h-4 rounded cursor-pointer border-0 p-0"
+                    style={{ background: 'transparent' }}
+                  />
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </Section>
+
+                {activeChannel === i && (
+                  <div className="ml-5 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] w-12" style={{ color: 'var(--text-muted)' }}>Bright</span>
+                      <input
+                        type="range"
+                        min={-0.5}
+                        max={0.5}
+                        step={0.01}
+                        value={channels[i]?.brightness ?? 0}
+                        onChange={e => onChannelChange(i, { brightness: parseFloat(e.target.value) })}
+                        className="flex-1"
+                      />
+                      <span className="text-[10px] w-8 text-right font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {((channels[i]?.brightness ?? 0) * 100).toFixed(0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] w-12" style={{ color: 'var(--text-muted)' }}>Contr</span>
+                      <input
+                        type="range"
+                        min={0.2}
+                        max={5}
+                        step={0.05}
+                        value={channels[i]?.contrast ?? 1}
+                        onChange={e => onChannelChange(i, { contrast: parseFloat(e.target.value) })}
+                        className="flex-1"
+                      />
+                      <span className="text-[10px] w-8 text-right font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {((channels[i]?.contrast ?? 1) * 100).toFixed(0)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* Detection */}
-      <Section title="Detection" icon={SlidersHorizontal}>
-        <div className="space-y-3">
-          {/* Active channel selector */}
-          <div>
-            <label className="text-[10px] uppercase tracking-wider mb-1 block"
-              style={{ color: 'var(--text-muted)' }}>
-              Target Channel
-            </label>
-            <select
-              value={activeChannel}
-              onChange={e => onActiveChannelChange(parseInt(e.target.value))}
-              className="w-full text-xs"
-            >
-              {image.channelNames.map((name, i) => (
-                <option key={i} value={i}>{name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sigma */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                Gaussian Sigma
-              </span>
-              <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                {detectionParams.sigma.toFixed(1)}
-              </span>
+      {image && (
+        <Section title="Detection" icon={SlidersHorizontal}>
+          <div className="space-y-3">
+            {/* Active channel selector */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider mb-1 block"
+                style={{ color: 'var(--text-muted)' }}>
+                Target Channel
+              </label>
+              <select
+                value={activeChannel}
+                onChange={e => onActiveChannelChange(parseInt(e.target.value))}
+                className="w-full text-xs"
+              >
+                {image.channelNames.map((name, i) => (
+                  <option key={i} value={i}>{name}</option>
+                ))}
+              </select>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={5}
-              step={0.1}
-              value={detectionParams.sigma}
-              onChange={e => onParamsChange({ sigma: parseFloat(e.target.value) })}
-              className="w-full"
-            />
-          </div>
 
-          {/* Threshold */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                Threshold
-              </span>
-              <label className="flex items-center gap-1 ml-auto cursor-pointer">
+            {/* Sigma */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  Gaussian Sigma
+                </span>
+                <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                  {detectionParams.sigma.toFixed(1)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={5}
+                step={0.1}
+                value={detectionParams.sigma}
+                onChange={e => onParamsChange({ sigma: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+
+            {/* Threshold */}
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  Threshold
+                </span>
+                <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={detectionParams.autoThreshold}
+                    onChange={e => onParamsChange({ autoThreshold: e.target.checked })}
+                    className="w-3 h-3 accent-blue-500"
+                  />
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Auto</span>
+                </label>
+              </div>
+              {!detectionParams.autoThreshold && (
+                <>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.005}
+                    value={detectionParams.threshold}
+                    onChange={e => onParamsChange({ threshold: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                  <div className="text-right text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                    {detectionParams.threshold.toFixed(3)}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Watershed toggle */}
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={detectionParams.autoThreshold}
-                  onChange={e => onParamsChange({ autoThreshold: e.target.checked })}
+                  checked={detectionParams.watershed}
+                  onChange={e => onParamsChange({ watershed: e.target.checked })}
                   className="w-3 h-3 accent-blue-500"
                 />
-                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Auto</span>
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Watershed (split touching cells)
+                </span>
               </label>
             </div>
-            {!detectionParams.autoThreshold && (
-              <>
+
+            {/* Min/Max area */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider block mb-1"
+                  style={{ color: 'var(--text-muted)' }}>Min Area</span>
                 <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.005}
-                  value={detectionParams.threshold}
-                  onChange={e => onParamsChange({ threshold: parseFloat(e.target.value) })}
-                  className="w-full"
+                  type="number"
+                  value={detectionParams.minArea}
+                  onChange={e => onParamsChange({ minArea: parseInt(e.target.value) || 0 })}
+                  className="w-full text-xs px-2 py-1 rounded"
+                  style={{
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
                 />
-                <div className="text-right text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                  {detectionParams.threshold.toFixed(3)}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Watershed toggle */}
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={detectionParams.watershed}
-                onChange={e => onParamsChange({ watershed: e.target.checked })}
-                className="w-3 h-3 accent-blue-500"
-              />
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Watershed (split touching cells)
-              </span>
-            </label>
-          </div>
-
-          {/* Min/Max area */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <span className="text-[10px] uppercase tracking-wider block mb-1"
-                style={{ color: 'var(--text-muted)' }}>Min Area</span>
-              <input
-                type="number"
-                value={detectionParams.minArea}
-                onChange={e => onParamsChange({ minArea: parseInt(e.target.value) || 0 })}
-                className="w-full text-xs px-2 py-1 rounded"
-                style={{
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
-                }}
-              />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase tracking-wider block mb-1"
+                  style={{ color: 'var(--text-muted)' }}>Max Area</span>
+                <input
+                  type="number"
+                  value={detectionParams.maxArea}
+                  onChange={e => onParamsChange({ maxArea: parseInt(e.target.value) || 10000 })}
+                  className="w-full text-xs px-2 py-1 rounded"
+                  style={{
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] uppercase tracking-wider block mb-1"
-                style={{ color: 'var(--text-muted)' }}>Max Area</span>
-              <input
-                type="number"
-                value={detectionParams.maxArea}
-                onChange={e => onParamsChange({ maxArea: parseInt(e.target.value) || 10000 })}
-                className="w-full text-xs px-2 py-1 rounded"
+
+            {/* Run buttons */}
+            <div className="space-y-1.5">
+              <button
+                className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold transition-all"
                 style={{
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
+                  background: isDetecting ? 'var(--bg-hover)' : 'var(--accent)',
+                  color: isDetecting ? 'var(--text-muted)' : '#fff',
+                  opacity: isDetecting ? 0.7 : 1,
                 }}
-              />
+                disabled={isDetecting}
+                onClick={onRunDetection}
+              >
+                {isDetecting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Detecting...
+                  </>
+                ) : (
+                  <>
+                    <Play size={14} />
+                    Run Detection
+                  </>
+                )}
+              </button>
+
+              {batch.length > 1 && (
+                <button
+                  className="w-full flex items-center justify-center gap-2 py-1.5 rounded text-xs font-semibold transition-all"
+                  style={{
+                    background: isDetecting ? 'var(--bg-hover)' : 'transparent',
+                    color: isDetecting ? 'var(--text-muted)' : 'var(--accent)',
+                    border: `1px solid ${isDetecting ? 'var(--border)' : 'var(--accent)'}`,
+                    opacity: isDetecting ? 0.7 : 1,
+                  }}
+                  disabled={isDetecting}
+                  onClick={onRunBatchDetection}
+                >
+                  <Zap size={13} />
+                  Detect All ({batch.length})
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Run button */}
-          <button
-            className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold transition-all"
-            style={{
-              background: isDetecting ? 'var(--bg-hover)' : 'var(--accent)',
-              color: isDetecting ? 'var(--text-muted)' : '#fff',
-              opacity: isDetecting ? 0.7 : 1,
-            }}
-            disabled={isDetecting}
-            onClick={onRunDetection}
-          >
-            {isDetecting ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                Detecting...
-              </>
-            ) : (
-              <>
-                <Play size={14} />
-                Run Detection
-              </>
-            )}
-          </button>
-        </div>
-      </Section>
+        </Section>
+      )}
 
       {/* Results */}
       {detection && (

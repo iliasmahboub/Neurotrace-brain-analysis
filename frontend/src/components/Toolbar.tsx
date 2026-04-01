@@ -3,15 +3,15 @@ import {
   Hand,
   ZoomIn,
   Crosshair,
-  Download,
   FileImage,
   FileSpreadsheet,
   RotateCcw,
+  FolderDown,
 } from 'lucide-react';
-import type { ViewState, DetectionResult, ImageData as NTImageData } from '../types';
+import type { ViewState, DetectionResult, ImageData as NTImageData, BatchItem } from '../types';
 
 interface ToolbarProps {
-  onUpload: (file: File) => void;
+  onUpload: (files: File[]) => void;
   view: ViewState;
   onViewChange: (view: Partial<ViewState>) => void;
   onResetView: () => void;
@@ -19,6 +19,8 @@ interface ToolbarProps {
   detection: DetectionResult | null;
   onExportPNG: () => void;
   onExportCSV: () => void;
+  batch: BatchItem[];
+  onExportBatchCSV: () => void;
 }
 
 export function Toolbar({
@@ -30,12 +32,16 @@ export function Toolbar({
   detection,
   onExportPNG,
   onExportCSV,
+  batch,
+  onExportBatchCSV,
 }: ToolbarProps) {
   const tools: Array<{ id: ViewState['tool']; icon: typeof Hand; label: string }> = [
     { id: 'pan', icon: Hand, label: 'Pan (Space+Drag)' },
     { id: 'zoom', icon: ZoomIn, label: 'Zoom (Scroll)' },
     { id: 'inspect', icon: Crosshair, label: 'Inspect Cell' },
   ];
+
+  const batchHasDetections = batch.some(item => item.detection !== null);
 
   return (
     <div className="h-10 flex items-center px-2 gap-1 border-b shrink-0"
@@ -62,14 +68,15 @@ export function Toolbar({
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         <Upload size={14} />
-        <span>Open Image</span>
+        <span>Open Image(s)</span>
         <input
           type="file"
           accept=".tif,.tiff,.png,.jpg,.jpeg"
+          multiple
           className="hidden"
           onChange={e => {
-            const f = e.target.files?.[0];
-            if (f) onUpload(f);
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) onUpload(files);
             e.target.value = '';
           }}
         />
@@ -135,7 +142,7 @@ export function Toolbar({
           </button>
           {detection && (
             <button
-              title="Export CSV"
+              title="Export CSV (current image)"
               className="p-1.5 rounded transition-colors"
               style={{ color: 'var(--text-secondary)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
@@ -143,6 +150,18 @@ export function Toolbar({
               onClick={onExportCSV}
             >
               <FileSpreadsheet size={15} />
+            </button>
+          )}
+          {batchHasDetections && batch.length > 1 && (
+            <button
+              title="Export batch CSV (all images)"
+              className="p-1.5 rounded transition-colors"
+              style={{ color: 'var(--accent)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-dim)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onClick={onExportBatchCSV}
+            >
+              <FolderDown size={15} />
             </button>
           )}
         </>

@@ -1,8 +1,5 @@
-import type { DetectionResult, ImageData as NTImageData } from '../types';
+import type { DetectionResult, BatchItem } from '../types';
 
-/**
- * Export detection results as CSV.
- */
 export function exportCSV(detection: DetectionResult, imageName: string): void {
   const rows = [
     ['cell_id', 'centroid_x', 'centroid_y', 'area_px', 'mean_intensity'].join(','),
@@ -15,9 +12,24 @@ export function exportCSV(detection: DetectionResult, imageName: string): void {
   downloadBlob(blob, `${imageName.replace(/\.[^.]+$/, '')}_cells.csv`);
 }
 
-/**
- * Export the current canvas view as PNG.
- */
+export function exportBatchCSV(items: BatchItem[]): void {
+  const rows = [
+    ['filename', 'cell_id', 'centroid_x', 'centroid_y', 'area_px', 'mean_intensity'].join(','),
+  ];
+
+  for (const item of items) {
+    if (!item.detection) continue;
+    for (const c of item.detection.centroids) {
+      rows.push(
+        [item.image.fileName, c.id, c.x, c.y, c.area, c.meanIntensity.toFixed(4)].join(',')
+      );
+    }
+  }
+
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  downloadBlob(blob, 'neurotrace_batch_results.csv');
+}
+
 export function exportPNG(
   imageCanvas: HTMLCanvasElement,
   overlayCanvas: HTMLCanvasElement | null,

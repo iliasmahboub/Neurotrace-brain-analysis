@@ -47,6 +47,12 @@ export interface ChannelState {
   contrast: number;
 }
 
+export interface BatchItem {
+  image: ImageData;
+  channels: ChannelState[];
+  detection: DetectionResult | null;
+}
+
 export interface AppState {
   image: ImageData | null;
   detection: DetectionResult | null;
@@ -58,4 +64,6 @@ export interface AppState {
   overlayOpacity: number;
   selectedCell: number | null;
   statusMessage: string;
+  batch: BatchItem[];
+  activeBatchIndex: number;
 }
