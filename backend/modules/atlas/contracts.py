@@ -139,16 +139,27 @@ class RegionCountSummary:
 
     image_name: str
     atlas_name: str
+    slice_index: int | None
+    hemisphere: str | None
     region_id: int
     region_acronym: str
     region_name: str
     cell_count: int
+    atlas_resolution_um: float
+    pixel_area_um2: float
+    region_area_px: int | None = None
+    region_area_um2: float | None = None
+    cell_density_per_mm2: float | None = None
 
     def __post_init__(self) -> None:
         if not self.image_name.strip():
             raise ValueError("image_name must not be empty")
         if not self.atlas_name.strip():
             raise ValueError("atlas_name must not be empty")
+        if self.slice_index is not None and self.slice_index < 0:
+            raise ValueError("slice_index must be non-negative when provided")
+        if self.hemisphere is not None and self.hemisphere not in {"left", "right", "bilateral"}:
+            raise ValueError("hemisphere must be one of: left, right, bilateral")
         if self.region_id <= 0:
             raise ValueError("region_id must be positive")
         if not self.region_acronym.strip():
@@ -157,3 +168,13 @@ class RegionCountSummary:
             raise ValueError("region_name must not be empty")
         if self.cell_count < 0:
             raise ValueError("cell_count must be non-negative")
+        if self.atlas_resolution_um <= 0:
+            raise ValueError("atlas_resolution_um must be positive")
+        if self.pixel_area_um2 <= 0:
+            raise ValueError("pixel_area_um2 must be positive")
+        if self.region_area_px is not None and self.region_area_px < 0:
+            raise ValueError("region_area_px must be non-negative when provided")
+        if self.region_area_um2 is not None and self.region_area_um2 < 0:
+            raise ValueError("region_area_um2 must be non-negative when provided")
+        if self.cell_density_per_mm2 is not None and self.cell_density_per_mm2 < 0:
+            raise ValueError("cell_density_per_mm2 must be non-negative when provided")

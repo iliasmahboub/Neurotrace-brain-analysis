@@ -1,4 +1,13 @@
-from backend.modules.atlas import RegionAssignmentRecord, summarize_region_assignments
+from pathlib import Path
+
+import numpy as np
+
+from backend.modules.atlas import (
+    AffineTransform2D,
+    AtlasRegistrationManifest,
+    RegionAssignmentRecord,
+    summarize_region_assignments,
+)
 
 
 def test_summarize_region_assignments_counts_only_assigned_cells() -> None:
@@ -44,8 +53,28 @@ def test_summarize_region_assignments_counts_only_assigned_cells() -> None:
         ),
     ]
 
-    summaries = summarize_region_assignments(assignments)
+    manifest = AtlasRegistrationManifest(
+        image_name="slice_a.tif",
+        atlas_name="allen_mouse_25um",
+        atlas_resolution_um=25.0,
+        annotation_image_path=Path("annotation.tif"),
+        structures_csv_path=Path("structures.csv"),
+        slice_index=7,
+        hemisphere="left",
+        transform=AffineTransform2D(
+            matrix=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+            source_space="image_px",
+            target_space="atlas_px",
+        ),
+    )
+    annotation = np.array([[10, 10], [10, 10]], dtype=np.int32)
+
+    summaries = summarize_region_assignments(assignments, manifest, annotation)
 
     assert len(summaries) == 1
     assert summaries[0].region_acronym == "ILA"
     assert summaries[0].cell_count == 2
+    assert summaries[0].slice_index == 7
+    assert summaries[0].hemisphere == "left"
+    assert summaries[0].region_area_px == 4
+    assert summaries[0].cell_density_per_mm2 is not None

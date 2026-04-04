@@ -8,12 +8,16 @@ from pathlib import Path
 
 try:
     from backend.modules.atlas import (
+        load_annotation_image,
+        load_registration_manifest,
         RegionAssignmentRecord,
         summarize_region_assignments,
         write_region_count_summary_csv,
     )
 except ModuleNotFoundError:
     from modules.atlas import (
+        load_annotation_image,
+        load_registration_manifest,
         RegionAssignmentRecord,
         summarize_region_assignments,
         write_region_count_summary_csv,
@@ -25,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Summarize atlas-assigned cells into per-region counts"
     )
     parser.add_argument("assignments_csv", help="path to the atlas assignments CSV")
+    parser.add_argument("manifest_json", help="path to the atlas registration manifest JSON")
     parser.add_argument(
         "-o",
         "--output-csv",
@@ -66,7 +71,16 @@ def main() -> None:
     args = build_parser().parse_args()
     assignments_path = Path(args.assignments_csv)
     assignments = read_region_assignments_csv(assignments_path)
-    summaries = summarize_region_assignments(assignments)
+    if not assignments:
+        raise ValueError("assignments csv contained no rows")
+
+    manifest = load_registration_manifest(args.manifest_json)
+    annotation_image = load_annotation_image(manifest.annotation_image_path)
+    summaries = summarize_region_assignments(
+        assignments=assignments,
+        manifest=manifest,
+        annotation_image=annotation_image,
+    )
 
     output_csv = Path(args.output_csv) if args.output_csv else default_output_path(assignments_path)
     write_region_count_summary_csv(summaries, output_csv)

@@ -116,10 +116,17 @@ def write_region_count_summary_csv(
             [
                 "image_name",
                 "atlas_name",
+                "slice_index",
+                "hemisphere",
                 "region_id",
                 "region_acronym",
                 "region_name",
                 "cell_count",
+                "atlas_resolution_um",
+                "pixel_area_um2",
+                "region_area_px",
+                "region_area_um2",
+                "cell_density_per_mm2",
             ]
         )
         for item in summaries:
@@ -127,10 +134,17 @@ def write_region_count_summary_csv(
                 [
                     item.image_name,
                     item.atlas_name,
+                    item.slice_index if item.slice_index is not None else "",
+                    item.hemisphere or "",
                     item.region_id,
                     item.region_acronym,
                     item.region_name,
                     item.cell_count,
+                    round(item.atlas_resolution_um, 6),
+                    round(item.pixel_area_um2, 6),
+                    item.region_area_px if item.region_area_px is not None else "",
+                    round(item.region_area_um2, 6) if item.region_area_um2 is not None else "",
+                    round(item.cell_density_per_mm2, 6) if item.cell_density_per_mm2 is not None else "",
                 ]
             )
 

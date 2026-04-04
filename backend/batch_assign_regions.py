@@ -58,7 +58,11 @@ def main() -> None:
             annotation_image=annotation_image,
             atlas_regions=atlas_regions,
         )
-        summaries = summarize_region_assignments(assignments)
+        summaries = summarize_region_assignments(
+            assignments=assignments,
+            manifest=manifest,
+            annotation_image=annotation_image,
+        )
 
         write_region_assignments_csv(assignments, job["assignments_csv"])
         write_region_count_summary_csv(summaries, job["summary_csv"])
