@@ -427,22 +427,14 @@ export function detectCells(
 
   // Segmentation
   let segLabels: Int32Array;
-  let segCount: number;
 
   if (params.watershed) {
     onProgress?.('Running watershed segmentation...');
     segLabels = watershedSegmentation(binary, width, height, params.minArea);
-    // Count unique labels
-    const uniqueLabels = new Set<number>();
-    for (let i = 0; i < segLabels.length; i++) {
-      if (segLabels[i] > 0) uniqueLabels.add(segLabels[i]);
-    }
-    segCount = uniqueLabels.size;
   } else {
     onProgress?.('Finding connected components...');
     const cc = connectedComponents(binary, width, height);
     segLabels = cc.labels;
-    segCount = cc.count;
   }
 
   // Compute area, centroid, and mean intensity per component

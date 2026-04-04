@@ -1,99 +1,96 @@
 # NeuroTrace
 
-### Automated cFos+ Cell Detection in Fluorescence Brain Slices
+### cFos Quantification for Fluorescence Brain Slices
 
-A browser-based analysis tool for immunofluorescence brain slice images. Upload a multi-channel TIFF, detect cFos+ cells, adjust parameters in real time, and export annotated figures and quantification data. No installation required.
+NeuroTrace is a neuroscience analysis repo aimed at reducing manual cFos counting from fluorescence brain slices. The current codebase has two working layers:
+
+1. A browser UI for loading TIFFs, visualizing channels, running classical segmentation, and exporting results.
+2. A Python CLI pipeline for Cellpose-based segmentation with per-cell CSV output and annotated overlays.
+
+This is not yet an end-to-end atlas-aware production pipeline. The goal is to keep the implemented pieces clean, inspectable, and directly useful for slice-level quantification while registration and cohort analysis are still in progress.
+
+Built for cFos quantification workflows in circuit neuroscience research.
 
 **[Launch NeuroTrace](https://iliasmahboub.github.io/Neurotrace-brain-analysis/)**
 
-I am building this to replace the manual ImageJ/QuPath cell counting workflow that most neuroscience labs still do by hand. The goal is a complete pipeline from raw fluorescence images to publication-ready figures with per-region cell counts, starting with a clean browser UI and extending to atlas registration and batch processing.
+---
 
-Built to support cFos quantification in circuit neuroscience research at Duke University School of Medicine (Dzirasa Lab).
+## Current Scope
+
+Implemented today:
+
+- Load multi-channel TIFF, PNG, or JPEG images in the browser.
+- View channels independently with per-channel visibility, color, brightness, and contrast controls.
+- Run browser-side detection using Gaussian smoothing, thresholding, watershed or connected components, and area filtering.
+- Inspect detected cells and export per-cell CSV plus annotated PNG.
+- Run batch detection across multiple loaded images in the frontend.
+- Run a backend Cellpose pipeline that exports both an overlay figure and per-cell measurements.
+
+Not implemented yet:
+
+- Atlas registration to Allen CCF or brainreg outputs.
+- Region-aware counts, densities, or structure-level summaries.
+- Cohort-level statistics across animals and conditions.
+- Validation benchmarks against expert annotations.
 
 ---
 
-## What It Does
+## Why This Exists
 
-NeuroTrace runs entirely in your browser. No Python, no Docker, no dependencies.
+cFos is commonly used as a readout of neuronal activation after behavior, stimulation, or stress paradigms. In many labs, the practical workflow is still:
 
-1. **Load** a multi-channel TIFF (DAPI + cFos) or standard image (PNG/JPEG)
-2. **View** channels independently with adjustable color, brightness, and contrast
-3. **Detect** cells using Gaussian denoising + Otsu thresholding + connected component segmentation
-4. **Inspect** individual cells by clicking -- see centroid coordinates and area
-5. **Export** results as CSV (cell ID, coordinates, area) or annotated PNG
+1. Acquire fluorescence images for DAPI and cFos channels.
+2. Open slices one by one in QuPath or ImageJ.
+3. Count cFos-positive nuclei manually or with semi-manual thresholding.
+4. Transfer counts into spreadsheets for downstream analysis.
 
----
-
-## The Problem
-
-cFos is an immediate early gene expressed in neurons within ~90 minutes of strong activation. Staining brain slices for cFos protein gives a spatial map of neural activity during a behavioral task. The standard quantification workflow is:
-
-1. Acquire multi-channel fluorescence images (DAPI for all nuclei, GFP/RFP for cFos+ nuclei)
-2. Open each image in QuPath or ImageJ
-3. Manually count cFos+ cells per region, per slice, per animal
-4. Copy counts into a spreadsheet
-
-Step 3 is the bottleneck. It takes hours per animal, introduces subjective bias, and doesn't scale. NeuroTrace automates it.
+That approach is slow, hard to standardize, and vulnerable to drift across people and sessions. NeuroTrace is intended to make slice-level quantification faster, more reproducible, and easier to inspect.
 
 ---
 
-## How Detection Works
+## Detection Paths
 
-The browser-based pipeline mirrors classical cell detection approaches:
+### Frontend path
 
-**Gaussian Blur** (sigma = 1.0 default) -- Convolves the target channel with a Gaussian kernel using separable 2D convolution. Suppresses shot noise from the camera sensor without destroying cell boundaries. Adjustable via the sidebar.
+The browser implementation is optimized for interactive review:
 
-**Thresholding** -- Either automatic (Otsu's method, which maximizes inter-class variance to find the optimal intensity cutoff) or manual slider control. Pixels above threshold are foreground; below are background.
+- Gaussian smoothing to suppress shot noise.
+- Otsu or manual thresholding.
+- Optional watershed splitting for touching objects.
+- Size filtering to remove obvious debris and merged components.
+- Boundary extraction for visual overlays.
 
-**Connected Component Labeling** -- Union-find algorithm with path compression identifies contiguous foreground regions. Each connected region gets a unique integer label.
+This path is useful for quick QC, parameter tuning, exploratory counting, and lightweight export.
 
-**Size Filtering** -- Rejects components smaller than `minArea` (noise) or larger than `maxArea` (artifacts, merged cells). Adjustable in the sidebar.
+### Backend path
 
-**Boundary Extraction** -- 4-connected neighbor comparison on the label mask produces single-pixel-wide outlines rendered as a red overlay.
+The Python CLI uses Cellpose for stronger segmentation on cFos-positive objects and exports:
 
----
+- Annotated overlay PNG.
+- Per-cell CSV with centroid, area, and mean intensity.
 
-## UI Overview
-
-The interface follows a QuPath-inspired layout optimized for fluorescence image analysis:
-
-| Area | Function |
-|---|---|
-| **Toolbar** | Open image, select tool (pan/zoom/inspect), reset view, export PNG/CSV |
-| **Viewer** | Canvas-based image display with scroll-wheel zoom-to-cursor, drag panning, pixel-level intensity readout |
-| **Sidebar: Channels** | Toggle channel visibility, pick display color, adjust brightness and contrast per channel |
-| **Sidebar: Detection** | Select target channel, set Gaussian sigma, toggle auto/manual threshold, set area filters, run detection |
-| **Sidebar: Results** | Cell count, average area, overlay opacity, selected cell details, scrollable cell list |
-| **Status Bar** | Image dimensions, bit depth, channel count, cursor coordinates with per-channel intensity values |
+This path is better suited for more serious offline quantification runs.
 
 ---
 
 ## Repository Structure
 
-```
+```text
 neurotrace/
-├── frontend/                    # Browser UI (React + TypeScript + Vite)
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Toolbar.tsx      # Top toolbar with tools and export
-│   │   │   ├── ImageViewer.tsx  # Pan/zoom canvas viewer
-│   │   │   └── Sidebar.tsx      # Channels, detection, results panels
-│   │   ├── lib/
-│   │   │   ├── tiff-loader.ts   # Multi-channel TIFF parser (utif2)
-│   │   │   ├── detection.ts     # Gaussian blur, Otsu, connected components
-│   │   │   ├── renderer.ts      # Channel compositing and overlay rendering
-│   │   │   └── export.ts        # CSV and PNG export
-│   │   ├── types/index.ts       # TypeScript interfaces
-│   │   ├── App.tsx              # Root component with state management
-│   │   └── main.tsx             # Entry point
-│   └── package.json
-├── backend/
-│   ├── pipeline.py              # Python CLI pipeline (Cellpose segmentation)
-│   └── requirements.txt
-├── data/sample/
-│   └── test_slice.tif           # Synthetic 2-channel test image (512x512)
-└── .github/workflows/
-    └── deploy.yml               # GitHub Pages auto-deploy on push
+|-- frontend/                  # React + TypeScript browser application
+|   |-- src/
+|   |   |-- components/        # Toolbar, viewer, sidebar
+|   |   |-- lib/               # TIFF loading, detection, rendering, export
+|   |   `-- types/             # Shared frontend types
+|   `-- package.json
+|-- backend/
+|   |-- pipeline.py            # Cellpose CLI pipeline
+|   `-- requirements.txt
+|-- data/sample/
+|   `-- test_slice.tif         # Sample input image
+|-- docs/
+|-- .github/workflows/
+`-- README.md
 ```
 
 ---
@@ -101,44 +98,40 @@ neurotrace/
 ## Development
 
 ```bash
-# Frontend (browser UI)
+# frontend
 cd frontend
 npm install
 npm run dev
-# Opens at localhost:5173
 
-# Backend (Python CLI -- requires Python 3.11+ and GPU recommended)
+# backend
 pip install -r backend/requirements.txt
-python backend/pipeline.py data/sample/test_slice.tif
+python backend/pipeline.py data/sample/test_slice.tif --cpu
 ```
 
----
+Frontend stack:
 
-## Tech Stack
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS v4
+- geotiff
+- lucide-react
 
-| Layer | Tools |
-|---|---|
-| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS v4 |
-| **Image I/O** | utif2 (TIFF decoding), Canvas API (rendering) |
-| **Detection** | Custom JS: Gaussian blur, Otsu threshold, union-find CCL |
-| **Icons** | lucide-react |
-| **Backend** | Python, Cellpose (cyto3), scikit-image, tifffile, matplotlib |
-| **Deployment** | GitHub Pages via GitHub Actions |
+Backend stack:
 
----
-
-## Planned
-
-- Atlas registration via brainreg -- map detected cells to Allen CCF brain regions
-- Per-region quantification with CSV export (region name, cell count, density)
-- Batch processing across multiple animals with group statistics
-- Cellpose model integration via ONNX.js for deep learning segmentation in the browser
+- Python
+- Cellpose
+- scikit-image
+- tifffile
+- matplotlib
 
 ---
 
-## Author
+## Roadmap
 
-**Ilias Mahboub**
-Molecular Biosciences -- Duke University / Duke Kunshan University
-Research Trainee @ Dzirasa Lab (Duke SM) -- Yuan Lab (SJTU-SM) -- Remy Lab
-[im132@duke.edu](mailto:im132@duke.edu)
+- Add validation against manually annotated ground-truth slices.
+- Introduce region-aware quantification after registration is in place.
+- Support batch summaries at the animal and condition level.
+- Decide which parts stay browser-native versus move to a reproducible backend pipeline.
+
+The standard for new work in this repo should be simple: no inflated claims, no placeholder architecture, and every added feature should improve real neuroscience usefulness.

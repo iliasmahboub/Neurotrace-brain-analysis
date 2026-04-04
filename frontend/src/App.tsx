@@ -1,9 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   ImageData as NTImageData,
   ChannelState,
   DetectionParams,
-  DetectionResult,
   ViewState,
   BatchItem,
 } from './types';
@@ -57,6 +56,12 @@ export default function App() {
   const image = activeItem?.image ?? null;
   const channels = activeItem?.channels ?? [];
   const detection = activeItem?.detection ?? null;
+
+  useEffect(() => {
+    if (!image) return;
+    setActiveChannel(current => Math.min(current, image.channels.length - 1));
+    setSelectedCell(null);
+  }, [image]);
 
   const updateActiveItem = useCallback((updates: Partial<BatchItem>) => {
     setBatch(prev => prev.map((item, i) =>
@@ -257,6 +262,7 @@ export default function App() {
           overlayOpacity={overlayOpacity}
           onOverlayOpacityChange={setOverlayOpacity}
           selectedCell={selectedCell}
+          onSelectedCellChange={setSelectedCell}
           activeChannel={activeChannel}
           onActiveChannelChange={setActiveChannel}
           batch={batch}

@@ -135,7 +135,7 @@ export function ImageViewer({
       panX: (rect.width - image.width * zoom) / 2,
       panY: (rect.height - image.height * zoom) / 2,
     });
-  }, [image]);
+  }, [image, onViewChange]);
 
   const cursorStyle =
     view.tool === 'pan' ? (isDragging ? 'grabbing' : 'grab') :

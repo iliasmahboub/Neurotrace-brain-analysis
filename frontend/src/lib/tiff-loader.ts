@@ -1,6 +1,8 @@
 import { fromArrayBuffer } from 'geotiff';
 import type { ImageData } from '../types';
 
+type RasterData = ArrayLike<number>;
+
 /**
  * Normalize a Float64Array to [0, 1] using min-max scaling.
  */
@@ -25,6 +27,15 @@ function makeChannelNames(count: number, isRGB: boolean): string[] {
   if (count === 2) return ['DAPI', 'cFos'];
   if (count === 3) return ['Ch1', 'Ch2', 'Ch3'];
   return Array.from({ length: count }, (_, i) => `Ch${i + 1}`);
+}
+
+function copyRasterToChannel(raster: RasterData, size: number): Float64Array {
+  const channel = new Float64Array(size);
+  for (let i = 0; i < size; i++) {
+    channel[i] = raster[i];
+  }
+  normalizeChannel(channel);
+  return channel;
 }
 
 /**
@@ -66,25 +77,14 @@ export async function loadTiff(file: File): Promise<ImageData> {
       const image = await tiff.getImage(i);
       if (image.getWidth() !== width || image.getHeight() !== height) continue;
       const rasters = await image.readRasters();
-      const band = rasters[0] as any;
-      const ch = new Float64Array(width * height);
-      for (let j = 0; j < ch.length; j++) {
-        ch[j] = band[j];
-      }
-      normalizeChannel(ch);
-      channels.push(ch);
+      const band = rasters[0];
+      channels.push(copyRasterToChannel(band, width * height));
     }
   } else {
     // Single page (or multi-sample page): split bands into channels
     const rasters = await firstImage.readRasters();
     for (let c = 0; c < rasters.length; c++) {
-      const band = rasters[c] as any;
-      const ch = new Float64Array(width * height);
-      for (let j = 0; j < ch.length; j++) {
-        ch[j] = band[j];
-      }
-      normalizeChannel(ch);
-      channels.push(ch);
+      channels.push(copyRasterToChannel(rasters[c], width * height));
     }
   }
 

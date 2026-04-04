@@ -38,6 +38,7 @@ interface SidebarProps {
   overlayOpacity: number;
   onOverlayOpacityChange: (opacity: number) => void;
   selectedCell: number | null;
+  onSelectedCellChange: (cellId: number | null) => void;
   activeChannel: number;
   onActiveChannelChange: (index: number) => void;
   batch: BatchItem[];
@@ -103,6 +104,7 @@ export function Sidebar({
   overlayOpacity,
   onOverlayOpacityChange,
   selectedCell,
+  onSelectedCellChange,
   activeChannel,
   onActiveChannelChange,
   batch,
@@ -526,7 +528,10 @@ export function Sidebar({
                           if (selectedCell !== cell.id)
                             e.currentTarget.style.background = 'transparent';
                         }}
-                        onClick={() => onShowOverlayChange(true)}
+                        onClick={() => {
+                          onShowOverlayChange(true);
+                          onSelectedCellChange(cell.id);
+                        }}
                       >
                         <td className="py-0.5 px-2 font-mono">{cell.id}</td>
                         <td className="py-0.5 px-2 text-right font-mono">{cell.x}</td>
