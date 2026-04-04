@@ -1,0 +1,4 @@
+summary_csv,animal_id,condition,cohort_label
+data/animal01/slice01_region_summary.csv,animal01,stress,pilot
+data/animal01/slice02_region_summary.csv,animal01,stress,pilot
+data/animal02/slice01_region_summary.csv,animal02,control,pilot
