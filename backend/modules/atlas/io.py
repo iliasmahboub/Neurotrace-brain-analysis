@@ -27,7 +27,7 @@ def load_registration_manifest(path: str | Path) -> AtlasRegistrationManifest:
         target_space=str(transform_payload["target_space"]),
     )
 
-    return AtlasRegistrationManifest(
+    manifest = AtlasRegistrationManifest(
         image_name=str(payload["image_name"]),
         atlas_name=str(payload["atlas_name"]),
         atlas_resolution_um=float(payload["atlas_resolution_um"]),
@@ -37,6 +37,8 @@ def load_registration_manifest(path: str | Path) -> AtlasRegistrationManifest:
         slice_index=int(payload["slice_index"]) if payload.get("slice_index") is not None else None,
         hemisphere=str(payload["hemisphere"]) if payload.get("hemisphere") is not None else None,
     )
+    validate_manifest_assets(manifest, manifest_path.parent)
+    return manifest
 
 
 def read_detected_cells_csv(path: str | Path) -> list[CellCoordinateRecord]:
@@ -131,3 +133,24 @@ def write_region_count_summary_csv(
                     item.cell_count,
                 ]
             )
+
+
+def validate_manifest_assets(
+    manifest: AtlasRegistrationManifest,
+    relative_to: str | Path | None = None,
+) -> None:
+    """Validate that manifest asset references exist on disk."""
+    base_path = Path(relative_to) if relative_to is not None else None
+    annotation_path = _resolve_path(manifest.annotation_image_path, base_path)
+    structures_path = _resolve_path(manifest.structures_csv_path, base_path)
+
+    if not annotation_path.exists():
+        raise FileNotFoundError(f"annotation image not found: {annotation_path}")
+    if not structures_path.exists():
+        raise FileNotFoundError(f"structures csv not found: {structures_path}")
+
+
+def _resolve_path(path: Path, base_path: Path | None) -> Path:
+    if path.is_absolute() or base_path is None:
+        return path
+    return (base_path / path).resolve()
