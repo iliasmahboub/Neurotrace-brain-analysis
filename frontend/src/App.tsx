@@ -198,9 +198,8 @@ export default function App() {
   }, [detection, image]);
 
   const handleExportBatchCSV = useCallback(() => {
-    const items = batch.filter(item => item.detection !== null);
-    if (items.length === 0) return;
-    exportBatchCSV(items);
+    if (!batch.some(item => item.detection !== null)) return;
+    exportBatchCSV(batch);
   }, [batch]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
