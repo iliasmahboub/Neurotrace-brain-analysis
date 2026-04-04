@@ -5,6 +5,7 @@ import {
   Crosshair,
   FileImage,
   FileSpreadsheet,
+  FileJson,
   RotateCcw,
   FolderDown,
 } from 'lucide-react';
@@ -19,8 +20,10 @@ interface ToolbarProps {
   detection: DetectionResult | null;
   onExportPNG: () => void;
   onExportCSV: () => void;
+  onExportJSON: () => void;
   batch: BatchItem[];
   onExportBatchCSV: () => void;
+  onExportBatchJSON: () => void;
 }
 
 export function Toolbar({
@@ -32,8 +35,10 @@ export function Toolbar({
   detection,
   onExportPNG,
   onExportCSV,
+  onExportJSON,
   batch,
   onExportBatchCSV,
+  onExportBatchJSON,
 }: ToolbarProps) {
   const tools: Array<{ id: ViewState['tool']; icon: typeof Hand; label: string }> = [
     { id: 'pan', icon: Hand, label: 'Pan (Space+Drag)' },
@@ -141,28 +146,52 @@ export function Toolbar({
             <FileImage size={15} />
           </button>
           {detection && (
-            <button
-              title="Export CSV (current image)"
-              className="p-1.5 rounded transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              onClick={onExportCSV}
-            >
-              <FileSpreadsheet size={15} />
-            </button>
+            <>
+              <button
+                title="Export CSV (current image)"
+                className="p-1.5 rounded transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onClick={onExportCSV}
+              >
+                <FileSpreadsheet size={15} />
+              </button>
+              <button
+                title="Export JSON (current image)"
+                className="p-1.5 rounded transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onClick={onExportJSON}
+              >
+                <FileJson size={15} />
+              </button>
+            </>
           )}
           {batchHasDetections && batch.length > 1 && (
-            <button
-              title="Export batch CSV (all images)"
-              className="p-1.5 rounded transition-colors"
-              style={{ color: 'var(--accent)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-dim)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              onClick={onExportBatchCSV}
-            >
-              <FolderDown size={15} />
-            </button>
+            <>
+              <button
+                title="Export batch CSV (all images)"
+                className="p-1.5 rounded transition-colors"
+                style={{ color: 'var(--accent)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-dim)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onClick={onExportBatchCSV}
+              >
+                <FolderDown size={15} />
+              </button>
+              <button
+                title="Export batch JSON (all images)"
+                className="p-1.5 rounded transition-colors"
+                style={{ color: 'var(--accent)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-dim)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onClick={onExportBatchJSON}
+              >
+                <FileJson size={15} />
+              </button>
+            </>
           )}
         </>
       )}

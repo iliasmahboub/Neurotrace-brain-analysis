@@ -3,12 +3,13 @@ import type {
   ImageData as NTImageData,
   ChannelState,
   DetectionParams,
+  DetectionExportContext,
   ViewState,
   BatchItem,
 } from './types';
 import { loadImage } from './lib/tiff-loader';
 import { detectCells } from './lib/detection';
-import { exportCSV, exportBatchCSV, exportPNG } from './lib/export';
+import { exportCSV, exportBatchCSV, exportBatchJson, exportDetectionJson, exportPNG } from './lib/export';
 import { Toolbar } from './components/Toolbar';
 import { ImageViewer } from './components/ImageViewer';
 import { Sidebar } from './components/Sidebar';
@@ -56,6 +57,20 @@ export default function App() {
   const image = activeItem?.image ?? null;
   const channels = activeItem?.channels ?? [];
   const detection = activeItem?.detection ?? null;
+
+  const buildExportContext = useCallback((sourceImage: NTImageData): DetectionExportContext => {
+    const channelIndex = Math.min(activeChannel, sourceImage.channels.length - 1);
+    return {
+      imageName: sourceImage.fileName,
+      imageWidth: sourceImage.width,
+      imageHeight: sourceImage.height,
+      bitDepth: sourceImage.bitDepth,
+      channelCount: sourceImage.channels.length,
+      targetChannelIndex: channelIndex,
+      targetChannelName: sourceImage.channelNames[channelIndex] ?? `Ch${channelIndex + 1}`,
+      params: detectionParams,
+    };
+  }, [activeChannel, detectionParams]);
 
   useEffect(() => {
     if (!image) return;
@@ -194,13 +209,23 @@ export default function App() {
 
   const handleExportCSV = useCallback(() => {
     if (!detection || !image) return;
-    exportCSV(detection, image.fileName);
-  }, [detection, image]);
+    exportCSV(detection, buildExportContext(image));
+  }, [detection, image, buildExportContext]);
+
+  const handleExportJSON = useCallback(() => {
+    if (!detection || !image) return;
+    exportDetectionJson(detection, buildExportContext(image));
+  }, [detection, image, buildExportContext]);
 
   const handleExportBatchCSV = useCallback(() => {
     if (!batch.some(item => item.detection !== null)) return;
-    exportBatchCSV(batch);
-  }, [batch]);
+    exportBatchCSV(batch, activeChannel, detectionParams);
+  }, [batch, activeChannel, detectionParams]);
+
+  const handleExportBatchJSON = useCallback(() => {
+    if (!batch.some(item => item.detection !== null)) return;
+    exportBatchJson(batch, activeChannel, detectionParams);
+  }, [batch, activeChannel, detectionParams]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -227,8 +252,10 @@ export default function App() {
         detection={detection}
         onExportPNG={handleExportPNG}
         onExportCSV={handleExportCSV}
+        onExportJSON={handleExportJSON}
         batch={batch}
         onExportBatchCSV={handleExportBatchCSV}
+        onExportBatchJSON={handleExportBatchJSON}
       />
 
       <div className="flex-1 flex overflow-hidden">

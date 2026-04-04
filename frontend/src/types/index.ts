@@ -44,6 +44,17 @@ export interface DetectionParams {
   watershed: boolean;
 }
 
+export interface DetectionExportContext {
+  imageName: string;
+  imageWidth: number;
+  imageHeight: number;
+  bitDepth: number;
+  channelCount: number;
+  targetChannelIndex: number;
+  targetChannelName: string;
+  params: DetectionParams;
+}
+
 export interface ViewState {
   zoom: number;
   panX: number;
