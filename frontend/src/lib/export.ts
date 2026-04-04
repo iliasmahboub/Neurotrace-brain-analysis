@@ -2,6 +2,16 @@ import type { DetectionResult, BatchItem } from '../types';
 
 export function exportCSV(detection: DetectionResult, imageName: string): void {
   const rows = [
+    `# image_name,${imageName}`,
+    `# cell_count,${detection.cellCount}`,
+    `# threshold_used,${detection.summary.thresholdUsed.toFixed(4)}`,
+    `# segmentation_method,${detection.summary.segmentationMethod}`,
+    `# total_area_px,${detection.summary.totalAreaPx}`,
+    `# area_coverage,${detection.summary.areaCoverage.toFixed(6)}`,
+    `# mean_area_px,${detection.summary.meanAreaPx.toFixed(2)}`,
+    `# median_area_px,${detection.summary.medianAreaPx.toFixed(2)}`,
+    `# mean_cell_intensity,${detection.summary.meanCellIntensity.toFixed(6)}`,
+    '',
     ['cell_id', 'centroid_x', 'centroid_y', 'area_px', 'mean_intensity'].join(','),
     ...detection.centroids.map(c =>
       [c.id, c.x, c.y, c.area, c.meanIntensity.toFixed(4)].join(',')

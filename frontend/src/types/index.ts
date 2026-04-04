@@ -22,6 +22,17 @@ export interface DetectionResult {
   boundaries: Uint8Array;
   width: number;
   height: number;
+  summary: DetectionSummary;
+}
+
+export interface DetectionSummary {
+  thresholdUsed: number;
+  segmentationMethod: 'watershed' | 'connected-components';
+  totalAreaPx: number;
+  areaCoverage: number;
+  meanAreaPx: number;
+  medianAreaPx: number;
+  meanCellIntensity: number;
 }
 
 export interface DetectionParams {

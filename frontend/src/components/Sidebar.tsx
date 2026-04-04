@@ -437,12 +437,26 @@ export function Sidebar({
               </div>
               <div className="rounded p-2 text-center" style={{ background: 'var(--accent-dim)' }}>
                 <div className="text-lg font-bold" style={{ color: 'var(--accent)' }}>
-                  {detection.centroids.length > 0
-                    ? Math.round(detection.centroids.reduce((s, c) => s + c.area, 0) / detection.centroids.length)
-                    : 0}
+                  {Math.round(detection.summary.meanAreaPx)}
                 </div>
                 <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   Avg Area
+                </div>
+              </div>
+              <div className="rounded p-2 text-center" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {(detection.summary.areaCoverage * 100).toFixed(2)}%
+                </div>
+                <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  Coverage
+                </div>
+              </div>
+              <div className="rounded p-2 text-center" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                <div className="text-sm font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
+                  {detection.summary.thresholdUsed.toFixed(3)}
+                </div>
+                <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  Threshold
                 </div>
               </div>
             </div>

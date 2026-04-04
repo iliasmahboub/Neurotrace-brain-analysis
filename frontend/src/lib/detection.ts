@@ -1,5 +1,22 @@
 import type { DetectionParams, DetectionResult, CellInfo } from '../types';
 
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  let total = 0;
+  for (const value of values) total += value;
+  return total / values.length;
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const midpoint = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+  }
+  return sorted[midpoint];
+}
+
 /**
  * Apply Gaussian blur to a single-channel image.
  * Separable 2D convolution for performance.
@@ -494,6 +511,10 @@ export function detectCells(
   onProgress?.('Extracting boundaries...');
   const boundaries = findBoundaries(remapLabels, width, height);
 
+  const cellAreas = centroids.map(cell => cell.area);
+  const cellIntensities = centroids.map(cell => cell.meanIntensity);
+  const totalAreaPx = cellAreas.reduce((sum, area) => sum + area, 0);
+
   onProgress?.(`Detection complete: ${centroids.length} cells found`);
 
   return {
@@ -503,6 +524,15 @@ export function detectCells(
     boundaries,
     width,
     height,
+    summary: {
+      thresholdUsed: threshold,
+      segmentationMethod: params.watershed ? 'watershed' : 'connected-components',
+      totalAreaPx,
+      areaCoverage: width * height > 0 ? totalAreaPx / (width * height) : 0,
+      meanAreaPx: mean(cellAreas),
+      medianAreaPx: median(cellAreas),
+      meanCellIntensity: mean(cellIntensities),
+    },
   };
 }
 
