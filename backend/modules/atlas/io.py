@@ -10,6 +10,7 @@ from .contracts import (
     AffineTransform2D,
     AtlasRegistrationManifest,
     CellCoordinateRecord,
+    RegionCountSummary,
     RegionAssignmentRecord,
 )
 
@@ -95,5 +96,38 @@ def write_region_assignments_csv(
                     item.region_acronym or "",
                     item.region_name or "",
                     item.assignment_status,
+                ]
+            )
+
+
+def write_region_count_summary_csv(
+    summaries: list[RegionCountSummary],
+    path: str | Path,
+) -> None:
+    """Write per-image region counts for downstream statistics."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "image_name",
+                "atlas_name",
+                "region_id",
+                "region_acronym",
+                "region_name",
+                "cell_count",
+            ]
+        )
+        for item in summaries:
+            writer.writerow(
+                [
+                    item.image_name,
+                    item.atlas_name,
+                    item.region_id,
+                    item.region_acronym,
+                    item.region_name,
+                    item.cell_count,
                 ]
             )

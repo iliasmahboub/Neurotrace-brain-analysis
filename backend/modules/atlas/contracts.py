@@ -131,3 +131,29 @@ class RegionAssignmentRecord:
         _validate_finite(self.source_y_px, "source_y_px")
         _validate_finite(self.atlas_x_um, "atlas_x_um")
         _validate_finite(self.atlas_y_um, "atlas_y_um")
+
+
+@dataclass(frozen=True)
+class RegionCountSummary:
+    """Per-image region count summary derived from atlas assignments."""
+
+    image_name: str
+    atlas_name: str
+    region_id: int
+    region_acronym: str
+    region_name: str
+    cell_count: int
+
+    def __post_init__(self) -> None:
+        if not self.image_name.strip():
+            raise ValueError("image_name must not be empty")
+        if not self.atlas_name.strip():
+            raise ValueError("atlas_name must not be empty")
+        if self.region_id <= 0:
+            raise ValueError("region_id must be positive")
+        if not self.region_acronym.strip():
+            raise ValueError("region_acronym must not be empty")
+        if not self.region_name.strip():
+            raise ValueError("region_name must not be empty")
+        if self.cell_count < 0:
+            raise ValueError("cell_count must be non-negative")
