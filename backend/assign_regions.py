@@ -6,14 +6,24 @@ import argparse
 from collections import Counter
 from pathlib import Path
 
-from modules.atlas import (
-    assign_cells_to_regions,
-    load_annotation_image,
-    load_atlas_regions_table,
-    load_registration_manifest,
-    read_detected_cells_csv,
-    write_region_assignments_csv,
-)
+try:
+    from backend.modules.atlas import (
+        assign_cells_to_regions,
+        load_annotation_image,
+        load_atlas_regions_table,
+        load_registration_manifest,
+        read_detected_cells_csv,
+        write_region_assignments_csv,
+    )
+except ModuleNotFoundError:
+    from modules.atlas import (
+        assign_cells_to_regions,
+        load_annotation_image,
+        load_atlas_regions_table,
+        load_registration_manifest,
+        read_detected_cells_csv,
+        write_region_assignments_csv,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

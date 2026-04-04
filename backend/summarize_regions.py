@@ -6,7 +6,18 @@ import argparse
 import csv
 from pathlib import Path
 
-from modules.atlas import RegionAssignmentRecord, summarize_region_assignments, write_region_count_summary_csv
+try:
+    from backend.modules.atlas import (
+        RegionAssignmentRecord,
+        summarize_region_assignments,
+        write_region_count_summary_csv,
+    )
+except ModuleNotFoundError:
+    from modules.atlas import (
+        RegionAssignmentRecord,
+        summarize_region_assignments,
+        write_region_count_summary_csv,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

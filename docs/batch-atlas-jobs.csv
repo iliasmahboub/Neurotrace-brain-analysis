@@ -1,0 +1,3 @@
+detections_csv,manifest_json,assignments_csv,summary_csv
+data/animal01/slice01_cells.csv,data/animal01/slice01_manifest.json,data/animal01/slice01_regions.csv,data/animal01/slice01_region_summary.csv
+data/animal01/slice02_cells.csv,data/animal01/slice02_manifest.json,data/animal01/slice02_regions.csv,data/animal01/slice02_region_summary.csv
