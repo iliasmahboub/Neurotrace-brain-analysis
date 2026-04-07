@@ -25,6 +25,7 @@ Implemented today:
 - Inspect detected cells and export per-cell CSV plus annotated PNG.
 - Run batch detection across multiple loaded images in the frontend.
 - Run a backend Cellpose pipeline that exports both an overlay figure and per-cell measurements.
+- Fit landmark-based affine registration manifests directly from paired slice/atlas landmarks.
 - Assign detected cells to atlas regions using an explicit registration manifest.
 - Export per-slice leaf-region summaries, hierarchy-aware parent-region summaries, QC reports, review queues, and QC overlays.
 - Aggregate cohort-level summaries across animals and conditions with animal-level descriptive statistics.

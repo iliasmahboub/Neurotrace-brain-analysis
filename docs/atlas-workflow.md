@@ -19,6 +19,23 @@ python backend/create_registration_manifest.py slice_a.tif allen_mouse_25um path
 
 This writes an identity-transform template that you can replace with your actual slice-to-atlas transform.
 
+## 1b. Fit an Affine Transform from Landmarks
+
+If you have paired source and atlas landmarks, NeuroTrace can fit an affine transform directly:
+
+```bash
+python backend/fit_affine_registration.py path/to/landmarks.csv slice_a.tif allen_mouse_25um path/to/annotation.tif path/to/structures.csv -o path/to/manifest.json
+```
+
+Expected landmark columns:
+
+- `source_x_px`
+- `source_y_px`
+- `atlas_x_px`
+- `atlas_y_px`
+
+The fitted manifest includes a `registration_qc` block with landmark count and landmark RMSE in atlas-pixel space.
+
 ## 2. Run Region Assignment
 
 ```bash
