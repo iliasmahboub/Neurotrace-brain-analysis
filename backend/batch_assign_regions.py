@@ -15,9 +15,11 @@ try:
         read_detected_cells_csv,
         summarize_assignment_qc,
         summarize_region_assignments,
+        summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
         write_region_assignments_csv,
         write_region_count_summary_csv,
+        write_region_hierarchy_summary_csv,
     )
 except ModuleNotFoundError:
     from modules.atlas import (
@@ -28,9 +30,11 @@ except ModuleNotFoundError:
         read_detected_cells_csv,
         summarize_assignment_qc,
         summarize_region_assignments,
+        summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
         write_region_assignments_csv,
         write_region_count_summary_csv,
+        write_region_hierarchy_summary_csv,
     )
 
 
@@ -67,10 +71,18 @@ def main() -> None:
             manifest=manifest,
             annotation_image=annotation_image,
         )
+        hierarchy_summaries = summarize_region_assignments_hierarchy(
+            assignments=assignments,
+            manifest=manifest,
+            annotation_image=annotation_image,
+            atlas_regions=atlas_regions,
+        )
         qc_summary = summarize_assignment_qc(assignments)
 
         write_region_assignments_csv(assignments, job["assignments_csv"])
         write_region_count_summary_csv(summaries, job["summary_csv"])
+        hierarchy_csv = Path(job["summary_csv"]).with_name(f"{Path(job['summary_csv']).stem}_hierarchy.csv")
+        write_region_hierarchy_summary_csv(hierarchy_summaries, hierarchy_csv)
         qc_json = Path(job["summary_csv"]).with_suffix(".qc.json")
         write_assignment_qc_summary_json(qc_summary, qc_json)
         completed += 1

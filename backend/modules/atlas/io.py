@@ -11,6 +11,7 @@ from .contracts import (
     AffineTransform2D,
     AtlasRegistrationManifest,
     CellCoordinateRecord,
+    RegionHierarchyCountSummary,
     RegionAssignmentQcSummary,
     RegionCountSummary,
     RegionAssignmentRecord,
@@ -175,6 +176,57 @@ def write_assignment_qc_summary_json(
     )
     payload["interior_fraction_within_assigned"] = _safe_fraction(summary.interior_cells, summary.assigned_cells)
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def write_region_hierarchy_summary_csv(
+    summaries: list[RegionHierarchyCountSummary],
+    path: str | Path,
+) -> None:
+    """Write hierarchy-aware region summaries for downstream analysis."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "image_name",
+                "atlas_name",
+                "slice_index",
+                "hemisphere",
+                "region_id",
+                "region_acronym",
+                "region_name",
+                "hierarchy_level",
+                "child_region_count",
+                "cell_count",
+                "atlas_resolution_um",
+                "pixel_area_um2",
+                "region_area_px",
+                "region_area_um2",
+                "cell_density_per_mm2",
+            ]
+        )
+        for item in summaries:
+            writer.writerow(
+                [
+                    item.image_name,
+                    item.atlas_name,
+                    item.slice_index if item.slice_index is not None else "",
+                    item.hemisphere or "",
+                    item.region_id,
+                    item.region_acronym,
+                    item.region_name,
+                    item.hierarchy_level,
+                    item.child_region_count,
+                    item.cell_count,
+                    round(item.atlas_resolution_um, 6),
+                    round(item.pixel_area_um2, 6),
+                    item.region_area_px if item.region_area_px is not None else "",
+                    round(item.region_area_um2, 6) if item.region_area_um2 is not None else "",
+                    round(item.cell_density_per_mm2, 6) if item.cell_density_per_mm2 is not None else "",
+                ]
+            )
 
 
 def validate_manifest_assets(

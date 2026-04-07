@@ -5,9 +5,11 @@ import numpy as np
 from backend.modules.atlas import (
     AffineTransform2D,
     AtlasRegistrationManifest,
+    AtlasRegion,
     RegionAssignmentRecord,
     summarize_assignment_qc,
     summarize_region_assignments,
+    summarize_region_assignments_hierarchy,
 )
 
 
@@ -136,3 +138,72 @@ def test_summarize_assignment_qc_counts_statuses_and_boundary_buckets() -> None:
     assert summary.border_cells == 1
     assert summary.near_border_cells == 1
     assert summary.interior_cells == 0
+
+
+def test_summarize_region_assignments_hierarchy_rolls_leaf_regions_to_parents() -> None:
+    assignments = [
+        RegionAssignmentRecord(
+            image_name="slice_a.tif",
+            atlas_name="allen_mouse_25um",
+            cell_id=1,
+            source_x_px=1.0,
+            source_y_px=2.0,
+            atlas_x_um=25.0,
+            atlas_y_um=50.0,
+            region_id=10,
+            region_acronym="ILA",
+            region_name="Infralimbic area",
+            assignment_status="assigned",
+            region_boundary_distance_um=120.0,
+            region_boundary_proximity="interior",
+        ),
+        RegionAssignmentRecord(
+            image_name="slice_a.tif",
+            atlas_name="allen_mouse_25um",
+            cell_id=2,
+            source_x_px=3.0,
+            source_y_px=4.0,
+            atlas_x_um=75.0,
+            atlas_y_um=100.0,
+            region_id=11,
+            region_acronym="PL",
+            region_name="Prelimbic area",
+            assignment_status="assigned",
+            region_boundary_distance_um=120.0,
+            region_boundary_proximity="interior",
+        ),
+    ]
+
+    manifest = AtlasRegistrationManifest(
+        image_name="slice_a.tif",
+        atlas_name="allen_mouse_25um",
+        atlas_resolution_um=25.0,
+        annotation_image_path=Path("annotation.tif"),
+        structures_csv_path=Path("structures.csv"),
+        slice_index=7,
+        hemisphere="left",
+        transform=AffineTransform2D(
+            matrix=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+            source_space="image_px",
+            target_space="atlas_px",
+        ),
+    )
+    annotation = np.array([[10, 10], [11, 11]], dtype=np.int32)
+    atlas_regions = {
+        10: AtlasRegion(region_id=10, acronym="ILA", name="Infralimbic area", parent_region_id=20),
+        11: AtlasRegion(region_id=11, acronym="PL", name="Prelimbic area", parent_region_id=20),
+        20: AtlasRegion(region_id=20, acronym="mPFC", name="Medial prefrontal cortex"),
+    }
+
+    summaries = summarize_region_assignments_hierarchy(
+        assignments=assignments,
+        manifest=manifest,
+        annotation_image=annotation,
+        atlas_regions=atlas_regions,
+    )
+
+    summary_by_region = {item.region_acronym: item for item in summaries}
+    assert summary_by_region["ILA"].cell_count == 1
+    assert summary_by_region["PL"].cell_count == 1
+    assert summary_by_region["mPFC"].cell_count == 2
+    assert summary_by_region["mPFC"].child_region_count == 2

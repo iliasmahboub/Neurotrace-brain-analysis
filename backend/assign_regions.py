@@ -15,8 +15,10 @@ try:
         read_detected_cells_csv,
         summarize_assignment_qc,
         summarize_region_assignments,
+        summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
         write_region_count_summary_csv,
+        write_region_hierarchy_summary_csv,
         write_region_assignments_csv,
     )
 except ModuleNotFoundError:
@@ -28,8 +30,10 @@ except ModuleNotFoundError:
         read_detected_cells_csv,
         summarize_assignment_qc,
         summarize_region_assignments,
+        summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
         write_region_count_summary_csv,
+        write_region_hierarchy_summary_csv,
         write_region_assignments_csv,
     )
 
@@ -79,18 +83,27 @@ def main() -> None:
         manifest=manifest,
         annotation_image=annotation_image,
     )
+    hierarchy_summaries = summarize_region_assignments_hierarchy(
+        assignments=assignments,
+        manifest=manifest,
+        annotation_image=annotation_image,
+        atlas_regions=atlas_regions,
+    )
     qc_summary = summarize_assignment_qc(assignments)
 
     output_csv = Path(args.output_csv) if args.output_csv else default_output_path(detections_path)
     write_region_assignments_csv(assignments, output_csv)
     summary_csv = output_csv.with_name(f"{output_csv.stem}_summary.csv")
     write_region_count_summary_csv(summaries, summary_csv)
+    hierarchy_csv = output_csv.with_name(f"{output_csv.stem}_hierarchy_summary.csv")
+    write_region_hierarchy_summary_csv(hierarchy_summaries, hierarchy_csv)
     qc_json = Path(args.qc_json) if args.qc_json else output_csv.with_name(f"{output_csv.stem}_qc.json")
     write_assignment_qc_summary_json(qc_summary, qc_json)
 
     counts = Counter(item.assignment_status for item in assignments)
     print(f"wrote {len(assignments)} region assignments to {output_csv}")
     print(f"wrote {len(summaries)} region summaries to {summary_csv}")
+    print(f"wrote {len(hierarchy_summaries)} hierarchy summaries to {hierarchy_csv}")
     print(f"wrote assignment qc summary to {qc_json}")
     print(
         "assignment summary: "

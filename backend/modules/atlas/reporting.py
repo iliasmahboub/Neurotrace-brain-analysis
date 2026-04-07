@@ -7,7 +7,9 @@ from collections import Counter, defaultdict
 import numpy as np
 
 from .contracts import (
+    AtlasRegion,
     AtlasRegistrationManifest,
+    RegionHierarchyCountSummary,
     RegionAssignmentQcSummary,
     RegionAssignmentRecord,
     RegionCountSummary,
@@ -90,6 +92,68 @@ def summarize_assignment_qc(assignments: list[RegionAssignmentRecord]) -> Region
     )
 
 
+def summarize_region_assignments_hierarchy(
+    assignments: list[RegionAssignmentRecord],
+    manifest: AtlasRegistrationManifest,
+    annotation_image: np.ndarray,
+    atlas_regions: dict[int, AtlasRegion],
+) -> list[RegionHierarchyCountSummary]:
+    """Aggregate assigned cells into hierarchy-aware region summaries including ancestors."""
+    pixel_area_um2 = manifest.atlas_resolution_um * manifest.atlas_resolution_um
+    region_areas = Counter(int(region_id) for region_id in annotation_image.flat if int(region_id) > 0)
+    hierarchy_counts: dict[int, int] = defaultdict(int)
+    hierarchy_area_px: dict[int, int] = defaultdict(int)
+    descendant_regions: dict[int, set[int]] = defaultdict(set)
+
+    for region_id, area_px in region_areas.items():
+        if region_id not in atlas_regions:
+            continue
+        for ancestor_id, _depth in _iter_region_lineage(region_id, atlas_regions):
+            hierarchy_area_px[ancestor_id] += area_px
+            descendant_regions[ancestor_id].add(region_id)
+
+    for item in assignments:
+        if item.assignment_status != "assigned" or item.region_id is None:
+            continue
+        if item.region_id not in atlas_regions:
+            continue
+        for ancestor_id, _depth in _iter_region_lineage(item.region_id, atlas_regions):
+            hierarchy_counts[ancestor_id] += 1
+
+    rows: list[RegionHierarchyCountSummary] = []
+    for region_id, cell_count in hierarchy_counts.items():
+        region = atlas_regions.get(region_id)
+        if region is None:
+            continue
+        area_px = hierarchy_area_px.get(region_id)
+        rows.append(
+            RegionHierarchyCountSummary(
+                image_name=manifest.image_name,
+                atlas_name=manifest.atlas_name,
+                slice_index=manifest.slice_index,
+                hemisphere=manifest.hemisphere,
+                region_id=region_id,
+                region_acronym=region.acronym,
+                region_name=region.name,
+                hierarchy_level=_region_depth(region_id, atlas_regions),
+                child_region_count=len(descendant_regions.get(region_id, {region_id})),
+                cell_count=cell_count,
+                atlas_resolution_um=manifest.atlas_resolution_um,
+                pixel_area_um2=pixel_area_um2,
+                region_area_px=area_px,
+                region_area_um2=(area_px * pixel_area_um2) if area_px is not None else None,
+                cell_density_per_mm2=_compute_density_per_mm2(
+                    cell_count=cell_count,
+                    region_area_px=area_px,
+                    pixel_area_um2=pixel_area_um2,
+                ),
+            )
+        )
+
+    rows.sort(key=lambda item: (item.hierarchy_level, item.region_name, item.region_id))
+    return rows
+
+
 def _compute_density_per_mm2(
     cell_count: int,
     region_area_px: int | None,
@@ -101,3 +165,28 @@ def _compute_density_per_mm2(
     if region_area_mm2 <= 0:
         return None
     return cell_count / region_area_mm2
+
+
+def _iter_region_lineage(
+    region_id: int,
+    atlas_regions: dict[int, AtlasRegion],
+) -> list[tuple[int, int]]:
+    lineage: list[tuple[int, int]] = []
+    depth = 0
+    current_region_id: int | None = region_id
+    visited: set[int] = set()
+
+    while current_region_id is not None and current_region_id in atlas_regions:
+        if current_region_id in visited:
+            raise ValueError(f"atlas hierarchy contains a cycle at region {current_region_id}")
+        visited.add(current_region_id)
+        lineage.append((current_region_id, depth))
+        current_region_id = atlas_regions[current_region_id].parent_region_id
+        depth += 1
+
+    return lineage
+
+
+def _region_depth(region_id: int, atlas_regions: dict[int, AtlasRegion]) -> int:
+    lineage = _iter_region_lineage(region_id, atlas_regions)
+    return max(0, len(lineage) - 1)
