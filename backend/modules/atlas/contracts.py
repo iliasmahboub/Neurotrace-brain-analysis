@@ -190,3 +190,39 @@ class RegionCountSummary:
             raise ValueError("region_area_um2 must be non-negative when provided")
         if self.cell_density_per_mm2 is not None and self.cell_density_per_mm2 < 0:
             raise ValueError("cell_density_per_mm2 must be non-negative when provided")
+
+
+@dataclass(frozen=True)
+class RegionAssignmentQcSummary:
+    """Quality-control summary for one atlas-assignment run."""
+
+    image_name: str
+    atlas_name: str
+    total_cells: int
+    assigned_cells: int
+    unknown_region_cells: int
+    outside_atlas_cells: int
+    border_cells: int
+    near_border_cells: int
+    interior_cells: int
+
+    def __post_init__(self) -> None:
+        if not self.image_name.strip():
+            raise ValueError("image_name must not be empty")
+        if not self.atlas_name.strip():
+            raise ValueError("atlas_name must not be empty")
+        values = (
+            self.total_cells,
+            self.assigned_cells,
+            self.unknown_region_cells,
+            self.outside_atlas_cells,
+            self.border_cells,
+            self.near_border_cells,
+            self.interior_cells,
+        )
+        if any(value < 0 for value in values):
+            raise ValueError("qc summary counts must be non-negative")
+        if self.assigned_cells + self.unknown_region_cells + self.outside_atlas_cells != self.total_cells:
+            raise ValueError("assignment status counts must sum to total_cells")
+        if self.border_cells + self.near_border_cells + self.interior_cells != self.assigned_cells:
+            raise ValueError("boundary proximity counts must sum to assigned_cells")

@@ -1,7 +1,13 @@
+import json
+
 from pathlib import Path
 
-from backend.modules.atlas import AffineTransform2D, AtlasRegistrationManifest
-from backend.modules.atlas.io import validate_manifest_assets
+from backend.modules.atlas import (
+    AffineTransform2D,
+    AtlasRegistrationManifest,
+    RegionAssignmentQcSummary,
+)
+from backend.modules.atlas.io import validate_manifest_assets, write_assignment_qc_summary_json
 
 
 def test_validate_manifest_assets_accepts_existing_files(tmp_path: Path) -> None:
@@ -46,3 +52,26 @@ def test_validate_manifest_assets_rejects_missing_files(tmp_path: Path) -> None:
         return
 
     raise AssertionError("expected FileNotFoundError for missing manifest assets")
+
+
+def test_write_assignment_qc_summary_json_includes_derived_fractions(tmp_path: Path) -> None:
+    output_path = tmp_path / "qc.json"
+    write_assignment_qc_summary_json(
+        RegionAssignmentQcSummary(
+            image_name="slice_a.tif",
+            atlas_name="allen_mouse_25um",
+            total_cells=10,
+            assigned_cells=7,
+            unknown_region_cells=2,
+            outside_atlas_cells=1,
+            border_cells=3,
+            near_border_cells=2,
+            interior_cells=2,
+        ),
+        output_path,
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+
+    assert payload["assigned_fraction"] == 0.7
+    assert payload["border_fraction_within_assigned"] == 3 / 7

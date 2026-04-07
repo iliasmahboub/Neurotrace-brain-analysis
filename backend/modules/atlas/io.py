@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from .contracts import (
     AffineTransform2D,
     AtlasRegistrationManifest,
     CellCoordinateRecord,
+    RegionAssignmentQcSummary,
     RegionCountSummary,
     RegionAssignmentRecord,
 )
@@ -155,6 +157,26 @@ def write_region_count_summary_csv(
             )
 
 
+def write_assignment_qc_summary_json(
+    summary: RegionAssignmentQcSummary,
+    path: str | Path,
+) -> None:
+    """Write assignment QC summary as JSON for downstream reporting or dashboards."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = asdict(summary)
+    payload["assigned_fraction"] = _safe_fraction(summary.assigned_cells, summary.total_cells)
+    payload["unknown_region_fraction"] = _safe_fraction(summary.unknown_region_cells, summary.total_cells)
+    payload["outside_atlas_fraction"] = _safe_fraction(summary.outside_atlas_cells, summary.total_cells)
+    payload["border_fraction_within_assigned"] = _safe_fraction(summary.border_cells, summary.assigned_cells)
+    payload["near_border_fraction_within_assigned"] = _safe_fraction(
+        summary.near_border_cells,
+        summary.assigned_cells,
+    )
+    payload["interior_fraction_within_assigned"] = _safe_fraction(summary.interior_cells, summary.assigned_cells)
+    output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def validate_manifest_assets(
     manifest: AtlasRegistrationManifest,
     relative_to: str | Path | None = None,
@@ -174,3 +196,9 @@ def _resolve_path(path: Path, base_path: Path | None) -> Path:
     if path.is_absolute() or base_path is None:
         return path
     return (base_path / path).resolve()
+
+
+def _safe_fraction(numerator: int, denominator: int) -> float:
+    if denominator <= 0:
+        return 0.0
+    return numerator / denominator

@@ -6,7 +6,12 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-from .contracts import AtlasRegistrationManifest, RegionAssignmentRecord, RegionCountSummary
+from .contracts import (
+    AtlasRegistrationManifest,
+    RegionAssignmentQcSummary,
+    RegionAssignmentRecord,
+    RegionCountSummary,
+)
 
 
 def summarize_region_assignments(
@@ -58,6 +63,31 @@ def summarize_region_assignments(
     ]
     summaries.sort(key=lambda item: (item.image_name, item.region_name, item.region_id))
     return summaries
+
+
+def summarize_assignment_qc(assignments: list[RegionAssignmentRecord]) -> RegionAssignmentQcSummary:
+    """Summarize assignment outcomes and region-boundary proximity for one image."""
+    if not assignments:
+        raise ValueError("assignments must contain at least one row")
+
+    status_counts = Counter(item.assignment_status for item in assignments)
+    proximity_counts = Counter(
+        item.region_boundary_proximity
+        for item in assignments
+        if item.assignment_status == "assigned" and item.region_boundary_proximity is not None
+    )
+    first = assignments[0]
+    return RegionAssignmentQcSummary(
+        image_name=first.image_name,
+        atlas_name=first.atlas_name,
+        total_cells=len(assignments),
+        assigned_cells=status_counts.get("assigned", 0),
+        unknown_region_cells=status_counts.get("unknown_region", 0),
+        outside_atlas_cells=status_counts.get("outside_atlas", 0),
+        border_cells=proximity_counts.get("border", 0),
+        near_border_cells=proximity_counts.get("near_border", 0),
+        interior_cells=proximity_counts.get("interior", 0),
+    )
 
 
 def _compute_density_per_mm2(

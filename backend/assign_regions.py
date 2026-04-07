@@ -13,7 +13,9 @@ try:
         load_atlas_regions_table,
         load_registration_manifest,
         read_detected_cells_csv,
+        summarize_assignment_qc,
         summarize_region_assignments,
+        write_assignment_qc_summary_json,
         write_region_count_summary_csv,
         write_region_assignments_csv,
     )
@@ -24,7 +26,9 @@ except ModuleNotFoundError:
         load_atlas_regions_table,
         load_registration_manifest,
         read_detected_cells_csv,
+        summarize_assignment_qc,
         summarize_region_assignments,
+        write_assignment_qc_summary_json,
         write_region_count_summary_csv,
         write_region_assignments_csv,
     )
@@ -41,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-csv",
         default=None,
         help="path to the region-assignment CSV output",
+    )
+    parser.add_argument(
+        "--qc-json",
+        default=None,
+        help="path to the QC summary JSON output",
     )
     return parser
 
@@ -70,20 +79,30 @@ def main() -> None:
         manifest=manifest,
         annotation_image=annotation_image,
     )
+    qc_summary = summarize_assignment_qc(assignments)
 
     output_csv = Path(args.output_csv) if args.output_csv else default_output_path(detections_path)
     write_region_assignments_csv(assignments, output_csv)
     summary_csv = output_csv.with_name(f"{output_csv.stem}_summary.csv")
     write_region_count_summary_csv(summaries, summary_csv)
+    qc_json = Path(args.qc_json) if args.qc_json else output_csv.with_name(f"{output_csv.stem}_qc.json")
+    write_assignment_qc_summary_json(qc_summary, qc_json)
 
     counts = Counter(item.assignment_status for item in assignments)
     print(f"wrote {len(assignments)} region assignments to {output_csv}")
     print(f"wrote {len(summaries)} region summaries to {summary_csv}")
+    print(f"wrote assignment qc summary to {qc_json}")
     print(
         "assignment summary: "
         f"assigned={counts.get('assigned', 0)} "
         f"unknown_region={counts.get('unknown_region', 0)} "
         f"outside_atlas={counts.get('outside_atlas', 0)}"
+    )
+    print(
+        "boundary summary: "
+        f"border={qc_summary.border_cells} "
+        f"near_border={qc_summary.near_border_cells} "
+        f"interior={qc_summary.interior_cells}"
     )
 
 

@@ -5,12 +5,14 @@ from .contracts import (
     AtlasRegistrationManifest,
     AtlasRegion,
     CellCoordinateRecord,
+    RegionAssignmentQcSummary,
     RegionCountSummary,
     RegionAssignmentRecord,
 )
 from .io import (
     load_registration_manifest,
     read_detected_cells_csv,
+    write_assignment_qc_summary_json,
     write_region_count_summary_csv,
     write_region_assignments_csv,
 )
@@ -21,13 +23,14 @@ from .mapper import (
     load_annotation_image,
     load_atlas_regions_table,
 )
-from .reporting import summarize_region_assignments
+from .reporting import summarize_assignment_qc, summarize_region_assignments
 
 __all__ = [
     "AffineTransform2D",
     "AtlasRegistrationManifest",
     "AtlasRegion",
     "CellCoordinateRecord",
+    "RegionAssignmentQcSummary",
     "RegionCountSummary",
     "RegionAssignmentRecord",
     "assign_cells_to_regions",
@@ -37,7 +40,9 @@ __all__ = [
     "load_atlas_regions_table",
     "load_registration_manifest",
     "read_detected_cells_csv",
+    "summarize_assignment_qc",
     "summarize_region_assignments",
+    "write_assignment_qc_summary_json",
     "write_region_count_summary_csv",
     "write_region_assignments_csv",
 ]
