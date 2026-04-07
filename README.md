@@ -25,12 +25,16 @@ Implemented today:
 - Inspect detected cells and export per-cell CSV plus annotated PNG.
 - Run batch detection across multiple loaded images in the frontend.
 - Run a backend Cellpose pipeline that exports both an overlay figure and per-cell measurements.
+- Assign detected cells to atlas regions using an explicit registration manifest.
+- Export per-slice leaf-region summaries, hierarchy-aware parent-region summaries, and QC JSON reports.
+- Aggregate cohort-level summaries across animals and conditions with animal-level descriptive statistics.
 
 Not implemented yet:
 
-- Atlas registration to Allen CCF or brainreg outputs.
-- Region-aware counts, densities, or structure-level summaries.
-- Cohort-level statistics across animals and conditions.
+- Native slice-to-atlas registration inside NeuroTrace.
+- Atlas QC overlays and researcher-in-the-loop registration review.
+- Uncertainty-aware assignment beyond border-distance heuristics.
+- Built-in inferential statistics for condition comparisons.
 - Validation benchmarks against expert annotations.
 
 ---
@@ -85,6 +89,10 @@ neurotrace/
 |   `-- package.json
 |-- backend/
 |   |-- pipeline.py            # Cellpose CLI pipeline
+|   |-- assign_regions.py      # Atlas region assignment CLI
+|   |-- batch_assign_regions.py
+|   |-- aggregate_region_cohorts.py
+|   |-- create_registration_manifest.py
 |   `-- requirements.txt
 |-- data/sample/
 |   `-- test_slice.tif         # Sample input image
@@ -107,6 +115,8 @@ npm run dev
 pip install -r backend/requirements.txt
 python backend/pipeline.py data/sample/test_slice.tif --cpu
 ```
+
+Atlas assignment and cohort-analysis usage is documented in [docs/atlas-workflow.md](/C:/Users/ilyas/neurotrace/docs/atlas-workflow.md).
 
 Frontend stack:
 
