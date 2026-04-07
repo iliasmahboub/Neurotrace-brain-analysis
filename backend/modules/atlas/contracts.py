@@ -115,6 +115,8 @@ class RegionAssignmentRecord:
     region_acronym: str | None
     region_name: str | None
     assignment_status: str
+    region_boundary_distance_um: float | None = None
+    region_boundary_proximity: str | None = None
 
     def __post_init__(self) -> None:
         if not self.image_name.strip():
@@ -126,6 +128,16 @@ class RegionAssignmentRecord:
         if self.assignment_status not in {"assigned", "outside_atlas", "unknown_region"}:
             raise ValueError(
                 "assignment_status must be one of: assigned, outside_atlas, unknown_region"
+            )
+        if self.region_boundary_distance_um is not None and self.region_boundary_distance_um < 0:
+            raise ValueError("region_boundary_distance_um must be non-negative when provided")
+        if self.region_boundary_proximity is not None and self.region_boundary_proximity not in {
+            "border",
+            "near_border",
+            "interior",
+        }:
+            raise ValueError(
+                "region_boundary_proximity must be one of: border, near_border, interior"
             )
         _validate_finite(self.source_x_px, "source_x_px")
         _validate_finite(self.source_y_px, "source_y_px")

@@ -82,6 +82,8 @@ def write_region_assignments_csv(
                 "region_acronym",
                 "region_name",
                 "assignment_status",
+                "region_boundary_distance_um",
+                "region_boundary_proximity",
             ]
         )
         for item in assignments:
@@ -98,6 +100,10 @@ def write_region_assignments_csv(
                     item.region_acronym or "",
                     item.region_name or "",
                     item.assignment_status,
+                    round(item.region_boundary_distance_um, 6)
+                    if item.region_boundary_distance_um is not None
+                    else "",
+                    item.region_boundary_proximity or "",
                 ]
             )
 

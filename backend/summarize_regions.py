@@ -57,6 +57,12 @@ def read_region_assignments_csv(path: str | Path) -> list[RegionAssignmentRecord
                     region_acronym=row["region_acronym"] or None,
                     region_name=row["region_name"] or None,
                     assignment_status=row["assignment_status"],
+                    region_boundary_distance_um=(
+                        float(row["region_boundary_distance_um"])
+                        if row.get("region_boundary_distance_um")
+                        else None
+                    ),
+                    region_boundary_proximity=row.get("region_boundary_proximity") or None,
                 )
             )
     return assignments

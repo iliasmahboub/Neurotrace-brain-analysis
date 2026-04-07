@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import tifffile
 from PIL import Image
+from scipy import ndimage
 
 from .contracts import (
     AtlasRegion,
@@ -60,6 +61,7 @@ def assign_cells_to_regions(
 ) -> list[RegionAssignmentRecord]:
     """Map detected cells into atlas space and assign each to a region."""
     assignments: list[RegionAssignmentRecord] = []
+    boundary_distances_px = compute_region_boundary_distances(annotation_image)
 
     image_height, image_width = annotation_image.shape
     for cell in cells:
@@ -86,6 +88,8 @@ def assign_cells_to_regions(
                     region_acronym=None,
                     region_name=None,
                     assignment_status="outside_atlas",
+                    region_boundary_distance_um=None,
+                    region_boundary_proximity=None,
                 )
             )
             continue
@@ -106,10 +110,14 @@ def assign_cells_to_regions(
                     region_acronym=region.acronym if region else None,
                     region_name=region.name if region else None,
                     assignment_status="unknown_region",
+                    region_boundary_distance_um=None,
+                    region_boundary_proximity=None,
                 )
             )
             continue
 
+        boundary_distance_px = float(boundary_distances_px[lookup_y, lookup_x])
+        boundary_distance_um = boundary_distance_px * manifest.atlas_resolution_um
         assignments.append(
             RegionAssignmentRecord(
                 image_name=manifest.image_name,
@@ -123,6 +131,8 @@ def assign_cells_to_regions(
                 region_acronym=region.acronym,
                 region_name=region.name,
                 assignment_status="assigned",
+                region_boundary_distance_um=boundary_distance_um,
+                region_boundary_proximity=classify_region_boundary_proximity(boundary_distance_um),
             )
         )
 
@@ -135,3 +145,28 @@ def _first_present(row: dict[str, str], *keys: str) -> str:
         if value is not None and value != "":
             return value
     raise KeyError(f"expected one of {keys!r} in atlas region table")
+
+
+def compute_region_boundary_distances(annotation_image: np.ndarray) -> np.ndarray:
+    """Compute distance in atlas pixels from each pixel to the nearest region boundary."""
+    if annotation_image.ndim != 2:
+        raise ValueError(f"annotation image must be 2D, got shape {annotation_image.shape}")
+
+    boundaries = np.zeros(annotation_image.shape, dtype=bool)
+    boundaries[:, 1:] |= annotation_image[:, 1:] != annotation_image[:, :-1]
+    boundaries[:, :-1] |= annotation_image[:, 1:] != annotation_image[:, :-1]
+    boundaries[1:, :] |= annotation_image[1:, :] != annotation_image[:-1, :]
+    boundaries[:-1, :] |= annotation_image[1:, :] != annotation_image[:-1, :]
+    boundaries |= annotation_image <= 0
+
+    # Distance transform returns, for each non-boundary pixel, the distance to the nearest boundary pixel.
+    return ndimage.distance_transform_edt(~boundaries)
+
+
+def classify_region_boundary_proximity(region_boundary_distance_um: float) -> str:
+    """Bucket a cell assignment by how far it sits from a region border."""
+    if region_boundary_distance_um < 50.0:
+        return "border"
+    if region_boundary_distance_um < 100.0:
+        return "near_border"
+    return "interior"

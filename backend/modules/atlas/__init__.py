@@ -16,6 +16,8 @@ from .io import (
 )
 from .mapper import (
     assign_cells_to_regions,
+    classify_region_boundary_proximity,
+    compute_region_boundary_distances,
     load_annotation_image,
     load_atlas_regions_table,
 )
@@ -29,6 +31,8 @@ __all__ = [
     "RegionCountSummary",
     "RegionAssignmentRecord",
     "assign_cells_to_regions",
+    "classify_region_boundary_proximity",
+    "compute_region_boundary_distances",
     "load_annotation_image",
     "load_atlas_regions_table",
     "load_registration_manifest",

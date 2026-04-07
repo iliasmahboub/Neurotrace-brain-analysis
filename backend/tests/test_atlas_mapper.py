@@ -8,6 +8,7 @@ from backend.modules.atlas import (
     AtlasRegion,
     CellCoordinateRecord,
     assign_cells_to_regions,
+    classify_region_boundary_proximity,
 )
 
 
@@ -58,5 +59,15 @@ def test_assign_cells_to_regions_handles_core_statuses() -> None:
         "outside_atlas",
     ]
     assert assignments[0].region_acronym == "CTX"
+    assert assignments[0].region_boundary_distance_um is not None
+    assert assignments[0].region_boundary_proximity in {"border", "near_border", "interior"}
     assert assignments[1].region_id == 99
     assert assignments[2].region_id is None
+
+
+def test_classify_region_boundary_proximity_uses_clear_buckets() -> None:
+    assert classify_region_boundary_proximity(0.0) == "border"
+    assert classify_region_boundary_proximity(49.9) == "border"
+    assert classify_region_boundary_proximity(50.0) == "near_border"
+    assert classify_region_boundary_proximity(99.9) == "near_border"
+    assert classify_region_boundary_proximity(100.0) == "interior"
