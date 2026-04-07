@@ -30,6 +30,7 @@ from .reporting import (
     summarize_region_assignments,
     summarize_region_assignments_hierarchy,
 )
+from .qc import save_assignment_qc_overlay
 
 __all__ = [
     "AffineTransform2D",
@@ -50,6 +51,7 @@ __all__ = [
     "summarize_assignment_qc",
     "summarize_region_assignments",
     "summarize_region_assignments_hierarchy",
+    "save_assignment_qc_overlay",
     "write_assignment_qc_summary_json",
     "write_region_count_summary_csv",
     "write_region_hierarchy_summary_csv",

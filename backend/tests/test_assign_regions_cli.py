@@ -62,3 +62,4 @@ def test_assign_regions_cli_writes_all_output_artifacts(tmp_path: Path) -> None:
     assert output_csv.with_name("detections_regions_summary.csv").exists()
     assert output_csv.with_name("detections_regions_hierarchy_summary.csv").exists()
     assert output_csv.with_name("detections_regions_qc.json").exists()
+    assert output_csv.with_name("detections_regions_qc_overlay.png").exists()

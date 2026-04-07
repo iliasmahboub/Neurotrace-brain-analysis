@@ -13,6 +13,7 @@ try:
         load_atlas_regions_table,
         load_registration_manifest,
         read_detected_cells_csv,
+        save_assignment_qc_overlay,
         summarize_assignment_qc,
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
@@ -28,6 +29,7 @@ except ModuleNotFoundError:
         load_atlas_regions_table,
         load_registration_manifest,
         read_detected_cells_csv,
+        save_assignment_qc_overlay,
         summarize_assignment_qc,
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
@@ -54,6 +56,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--qc-json",
         default=None,
         help="path to the QC summary JSON output",
+    )
+    parser.add_argument(
+        "--qc-overlay-png",
+        default=None,
+        help="path to the QC overlay PNG output",
     )
     return parser
 
@@ -99,12 +106,24 @@ def main() -> None:
     write_region_hierarchy_summary_csv(hierarchy_summaries, hierarchy_csv)
     qc_json = Path(args.qc_json) if args.qc_json else output_csv.with_name(f"{output_csv.stem}_qc.json")
     write_assignment_qc_summary_json(qc_summary, qc_json)
+    qc_overlay_png = (
+        Path(args.qc_overlay_png)
+        if args.qc_overlay_png
+        else output_csv.with_name(f"{output_csv.stem}_qc_overlay.png")
+    )
+    save_assignment_qc_overlay(
+        annotation_image=annotation_image,
+        assignments=assignments,
+        output_path=qc_overlay_png,
+        title=f"{manifest.image_name} atlas QC",
+    )
 
     counts = Counter(item.assignment_status for item in assignments)
     print(f"wrote {len(assignments)} region assignments to {output_csv}")
     print(f"wrote {len(summaries)} region summaries to {summary_csv}")
     print(f"wrote {len(hierarchy_summaries)} hierarchy summaries to {hierarchy_csv}")
     print(f"wrote assignment qc summary to {qc_json}")
+    print(f"wrote assignment qc overlay to {qc_overlay_png}")
     print(
         "assignment summary: "
         f"assigned={counts.get('assigned', 0)} "

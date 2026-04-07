@@ -13,6 +13,7 @@ try:
         load_atlas_regions_table,
         load_registration_manifest,
         read_detected_cells_csv,
+        save_assignment_qc_overlay,
         summarize_assignment_qc,
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
@@ -28,6 +29,7 @@ except ModuleNotFoundError:
         load_atlas_regions_table,
         load_registration_manifest,
         read_detected_cells_csv,
+        save_assignment_qc_overlay,
         summarize_assignment_qc,
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
@@ -85,6 +87,13 @@ def main() -> None:
         write_region_hierarchy_summary_csv(hierarchy_summaries, hierarchy_csv)
         qc_json = Path(job["summary_csv"]).with_suffix(".qc.json")
         write_assignment_qc_summary_json(qc_summary, qc_json)
+        qc_overlay_png = Path(job["summary_csv"]).with_suffix(".qc.png")
+        save_assignment_qc_overlay(
+            annotation_image=annotation_image,
+            assignments=assignments,
+            output_path=qc_overlay_png,
+            title=f"{manifest.image_name} atlas QC",
+        )
         completed += 1
         print(
             f"completed {completed}/{len(jobs)}: "
