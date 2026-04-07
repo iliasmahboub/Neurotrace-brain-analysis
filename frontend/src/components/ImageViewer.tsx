@@ -15,6 +15,8 @@ interface ImageViewerProps {
   onCellSelect: (cellId: number | null) => void;
   imageCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   overlayCanvasRef: React.RefObject<HTMLCanvasElement | null>;
+  atlasOverlayUrl: string | null;
+  atlasOverlayName: string | null;
 }
 
 export function ImageViewer({
@@ -29,6 +31,8 @@ export function ImageViewer({
   onCellSelect,
   imageCanvasRef,
   overlayCanvasRef,
+  atlasOverlayUrl,
+  atlasOverlayName,
 }: ImageViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -144,43 +148,81 @@ export function ImageViewer({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ background: '#0a0b0f' }}>
-      <div
-        ref={containerRef}
-        className="flex-1 relative overflow-hidden"
-        style={{ cursor: cursorStyle }}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={() => { setIsDragging(false); setCursorPos(null); }}
-      >
-        {image ? (
+      <div className="flex-1 flex overflow-hidden">
+        <div
+          ref={containerRef}
+          className="relative overflow-hidden"
+          style={{ cursor: cursorStyle, flex: atlasOverlayUrl ? '1 1 58%' : '1 1 100%' }}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={() => { setIsDragging(false); setCursorPos(null); }}
+        >
+          {image ? (
+            <div
+              style={{
+                position: 'absolute',
+                transform: `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`,
+                transformOrigin: '0 0',
+                imageRendering: view.zoom > 3 ? 'pixelated' : 'auto',
+              }}
+            >
+              <canvas ref={imageCanvasRef} />
+              <canvas
+                ref={overlayCanvasRef}
+                style={{ position: 'absolute', top: 0, left: 0 }}
+              />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center select-none">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5"
+                style={{ background: 'var(--bg-panel)', border: '2px dashed var(--border-light)' }}>
+                <Upload size={28} style={{ color: 'var(--text-muted)' }} />
+              </div>
+              <p className="text-sm mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                Drop a TIFF or image file here
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                or use Open Image in the toolbar
+              </p>
+            </div>
+          )}
+        </div>
+
+        {atlasOverlayUrl && (
           <div
+            className="border-l flex flex-col"
             style={{
-              position: 'absolute',
-              transform: `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`,
-              transformOrigin: '0 0',
-              imageRendering: view.zoom > 3 ? 'pixelated' : 'auto',
+              flex: '1 1 42%',
+              borderColor: 'var(--border)',
+              background:
+                'radial-gradient(circle at top, rgba(78,168,246,0.08), transparent 45%), #091017',
             }}
           >
-            <canvas ref={imageCanvasRef} />
-            <canvas
-              ref={overlayCanvasRef}
-              style={{ position: 'absolute', top: 0, left: 0 }}
-            />
-          </div>
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center select-none">
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5"
-              style={{ background: 'var(--bg-panel)', border: '2px dashed var(--border-light)' }}>
-              <Upload size={28} style={{ color: 'var(--text-muted)' }} />
+            <div
+              className="px-4 py-3 border-b"
+              style={{ borderColor: 'var(--border)', background: 'rgba(10, 15, 22, 0.86)' }}
+            >
+              <div className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--accent)' }}>
+                Atlas QC Workspace
+              </div>
+              <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {atlasOverlayName ?? 'Imported QC overlay'}
+              </div>
             </div>
-            <p className="text-sm mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-              Drop a TIFF or image file here
-            </p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              or use Open Image in the toolbar
-            </p>
+            <div className="flex-1 overflow-auto p-4">
+              <div
+                className="rounded-2xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+                style={{ border: '1px solid rgba(255,255,255,0.08)', background: '#05080d' }}
+              >
+                <img
+                  src={atlasOverlayUrl}
+                  alt="Atlas QC overlay"
+                  className="block w-full h-auto"
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>

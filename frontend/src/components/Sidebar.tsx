@@ -16,10 +16,12 @@ import {
   Check,
   Database,
   AlertTriangle,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type {
   ImageData as NTImageData,
   AtlasQcSummary,
+  AtlasReviewRow,
   AtlasRegionSummaryRow,
   ChannelState,
   DetectionParams,
@@ -52,6 +54,8 @@ interface SidebarProps {
   atlasQcSummary: AtlasQcSummary | null;
   atlasLeafSummary: AtlasRegionSummaryRow[];
   atlasHierarchySummary: AtlasRegionSummaryRow[];
+  atlasReviewRows: AtlasReviewRow[];
+  atlasOverlayLoaded: boolean;
 }
 
 function Section({
@@ -121,7 +125,16 @@ export function Sidebar({
   atlasQcSummary,
   atlasLeafSummary,
   atlasHierarchySummary,
+  atlasReviewRows,
+  atlasOverlayLoaded,
 }: SidebarProps) {
+  const priorityOrder: Record<string, number> = {
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+  };
+
   if (!image && batch.length === 0) {
     return (
       <div className="w-64 shrink-0 flex flex-col items-center justify-center border-l"
@@ -584,6 +597,18 @@ export function Sidebar({
           badge={atlasQcSummary?.atlas_name ?? (atlasHierarchySummary.length > 0 ? 'loaded' : undefined)}
         >
           <div className="space-y-3">
+            {atlasOverlayLoaded && (
+              <div
+                className="rounded px-2 py-1.5 flex items-center gap-2"
+                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+              >
+                <ImageIcon size={12} style={{ color: 'var(--accent)' }} />
+                <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
+                  QC Overlay Loaded
+                </span>
+              </div>
+            )}
+
             {atlasQcSummary && (
               <>
                 <div className="grid grid-cols-2 gap-2">
@@ -688,6 +713,68 @@ export function Sidebar({
                           <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                             cells
                           </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {atlasReviewRows.length > 0 && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
+                  Review Queue
+                </div>
+                <div className="space-y-1 max-h-44 overflow-y-auto">
+                  {atlasReviewRows
+                    .slice()
+                    .sort((left, right) => {
+                      const leftRank = priorityOrder[left.review_priority] ?? 99;
+                      const rightRank = priorityOrder[right.review_priority] ?? 99;
+                      return leftRank - rightRank;
+                    })
+                    .slice(0, 10)
+                    .map(row => (
+                      <div
+                        key={`${row.cell_id}-${row.assignment_status}-${row.review_priority}`}
+                        className="rounded px-2 py-1.5"
+                        style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-[9px] px-1.5 py-0.5 rounded-full font-mono uppercase"
+                            style={{
+                              background:
+                                row.review_priority === 'critical'
+                                  ? 'var(--danger-dim)'
+                                  : row.review_priority === 'high'
+                                    ? 'rgba(245, 158, 11, 0.14)'
+                                    : row.review_priority === 'medium'
+                                      ? 'var(--accent-dim)'
+                                      : 'var(--bg-hover)',
+                              color:
+                                row.review_priority === 'critical'
+                                  ? 'var(--danger)'
+                                  : row.review_priority === 'high'
+                                    ? 'var(--warning)'
+                                    : row.review_priority === 'medium'
+                                      ? 'var(--accent)'
+                                      : 'var(--text-secondary)',
+                            }}
+                          >
+                            {row.review_priority}
+                          </span>
+                          <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                            Cell {row.cell_id}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-[11px]" style={{ color: 'var(--text-primary)' }}>
+                          {row.region_name || row.assignment_status}
+                        </div>
+                        <div className="mt-0.5 text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+                          {row.assignment_status}
+                          {row.region_boundary_proximity ? ` • ${row.region_boundary_proximity}` : ''}
+                          {row.region_boundary_distance_um ? ` • ${Number(row.region_boundary_distance_um).toFixed(1)} um` : ''}
                         </div>
                       </div>
                     ))}

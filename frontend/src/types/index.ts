@@ -111,6 +111,23 @@ export interface AtlasRegionSummaryRow {
   cell_density_per_mm2: string;
 }
 
+export interface AtlasReviewRow {
+  image_name: string;
+  atlas_name: string;
+  cell_id: string;
+  source_x_px: string;
+  source_y_px: string;
+  atlas_x_um: string;
+  atlas_y_um: string;
+  region_id: string;
+  region_acronym: string;
+  region_name: string;
+  assignment_status: string;
+  region_boundary_distance_um: string;
+  region_boundary_proximity: string;
+  review_priority: 'critical' | 'high' | 'medium' | 'low' | string;
+}
+
 export interface AppState {
   image: ImageData | null;
   detection: DetectionResult | null;

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   ImageData as NTImageData,
   AtlasQcSummary,
+  AtlasReviewRow,
   AtlasRegionSummaryRow,
   ChannelState,
   DetectionParams,
@@ -10,7 +11,7 @@ import type {
   BatchItem,
 } from './types';
 import { loadImage } from './lib/tiff-loader';
-import { parseAtlasQcSummary, parseAtlasSummaryRows } from './lib/atlas-import';
+import { parseAtlasQcSummary, parseAtlasReviewRows, parseAtlasSummaryRows } from './lib/atlas-import';
 import { detectCells } from './lib/detection';
 import { exportCSV, exportBatchCSV, exportBatchJson, exportDetectionJson, exportPNG } from './lib/export';
 import { Toolbar } from './components/Toolbar';
@@ -54,6 +55,9 @@ export default function App() {
   const [atlasQcSummary, setAtlasQcSummary] = useState<AtlasQcSummary | null>(null);
   const [atlasLeafSummary, setAtlasLeafSummary] = useState<AtlasRegionSummaryRow[]>([]);
   const [atlasHierarchySummary, setAtlasHierarchySummary] = useState<AtlasRegionSummaryRow[]>([]);
+  const [atlasReviewRows, setAtlasReviewRows] = useState<AtlasReviewRow[]>([]);
+  const [atlasOverlayUrl, setAtlasOverlayUrl] = useState<string | null>(null);
+  const [atlasOverlayName, setAtlasOverlayName] = useState<string | null>(null);
 
   const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -247,13 +251,31 @@ export default function App() {
     let loadedQc = false;
     let loadedLeaf = false;
     let loadedHierarchy = false;
+    let loadedReview = false;
+    let loadedOverlay = false;
 
     for (const file of files) {
       try {
         const normalizedName = file.name.toLowerCase();
+        if (/\.(png|jpg|jpeg|webp)$/.test(normalizedName)) {
+          setAtlasOverlayUrl(previous => {
+            if (previous) URL.revokeObjectURL(previous);
+            return URL.createObjectURL(file);
+          });
+          setAtlasOverlayName(file.name);
+          loadedOverlay = true;
+          continue;
+        }
+
         if (normalizedName.endsWith('.json')) {
           setAtlasQcSummary(await parseAtlasQcSummary(file));
           loadedQc = true;
+          continue;
+        }
+
+        if (normalizedName.includes('review')) {
+          setAtlasReviewRows(await parseAtlasReviewRows(file));
+          loadedReview = true;
           continue;
         }
 
@@ -276,12 +298,22 @@ export default function App() {
       loadedQc ? 'qc' : null,
       loadedLeaf ? 'leaf summary' : null,
       loadedHierarchy ? 'hierarchy summary' : null,
+      loadedReview ? 'review queue' : null,
+      loadedOverlay ? 'overlay image' : null,
     ].filter(Boolean);
 
     if (loadedParts.length > 0) {
       setStatusMessage(`Imported atlas outputs: ${loadedParts.join(', ')}`);
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (atlasOverlayUrl) {
+        URL.revokeObjectURL(atlasOverlayUrl);
+      }
+    };
+  }, [atlasOverlayUrl]);
 
   return (
     <div
@@ -318,6 +350,8 @@ export default function App() {
           onCellSelect={setSelectedCell}
           imageCanvasRef={imageCanvasRef}
           overlayCanvasRef={overlayCanvasRef}
+          atlasOverlayUrl={atlasOverlayUrl}
+          atlasOverlayName={atlasOverlayName}
         />
 
         <Sidebar
@@ -345,6 +379,8 @@ export default function App() {
           atlasQcSummary={atlasQcSummary}
           atlasLeafSummary={atlasLeafSummary}
           atlasHierarchySummary={atlasHierarchySummary}
+          atlasReviewRows={atlasReviewRows}
+          atlasOverlayLoaded={atlasOverlayUrl !== null}
         />
       </div>
 

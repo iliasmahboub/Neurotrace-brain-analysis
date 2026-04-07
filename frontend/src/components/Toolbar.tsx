@@ -100,7 +100,7 @@ export function Toolbar({
         <span>Import Atlas Outputs</span>
         <input
           type="file"
-          accept=".csv,.json"
+          accept=".csv,.json,.png,.jpg,.jpeg,.webp"
           multiple
           className="hidden"
           onChange={e => {
