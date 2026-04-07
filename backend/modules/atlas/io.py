@@ -11,6 +11,8 @@ from .contracts import (
     AffineTransform2D,
     AtlasRegistrationManifest,
     CellCoordinateRecord,
+    RegistrationProvenance,
+    RegistrationQc,
     RegionHierarchyCountSummary,
     RegionAssignmentQcSummary,
     RegionCountSummary,
@@ -29,6 +31,8 @@ def load_registration_manifest(path: str | Path) -> AtlasRegistrationManifest:
         source_space=str(transform_payload["source_space"]),
         target_space=str(transform_payload["target_space"]),
     )
+    registration_qc_payload = payload.get("registration_qc")
+    registration_provenance_payload = payload.get("registration_provenance")
 
     manifest = AtlasRegistrationManifest(
         image_name=str(payload["image_name"]),
@@ -39,6 +43,40 @@ def load_registration_manifest(path: str | Path) -> AtlasRegistrationManifest:
         transform=transform,
         slice_index=int(payload["slice_index"]) if payload.get("slice_index") is not None else None,
         hemisphere=str(payload["hemisphere"]) if payload.get("hemisphere") is not None else None,
+        registration_qc=(
+            RegistrationQc(
+                landmark_rmse_px=(
+                    float(registration_qc_payload["landmark_rmse_px"])
+                    if registration_qc_payload.get("landmark_rmse_px") is not None
+                    else None
+                ),
+                landmark_count=(
+                    int(registration_qc_payload["landmark_count"])
+                    if registration_qc_payload.get("landmark_count") is not None
+                    else None
+                ),
+            )
+            if isinstance(registration_qc_payload, dict)
+            else None
+        ),
+        registration_provenance=(
+            RegistrationProvenance(
+                method=str(registration_provenance_payload["method"]),
+                source_file=(
+                    _resolve_path(Path(registration_provenance_payload["source_file"]), manifest_path.parent)
+                    if registration_provenance_payload.get("source_file")
+                    else None
+                ),
+                notes=str(registration_provenance_payload["notes"])
+                if registration_provenance_payload.get("notes") is not None
+                else None,
+                generated_by=str(registration_provenance_payload["generated_by"])
+                if registration_provenance_payload.get("generated_by") is not None
+                else None,
+            )
+            if isinstance(registration_provenance_payload, dict)
+            else None
+        ),
     )
     validate_manifest_assets(manifest)
     return manifest

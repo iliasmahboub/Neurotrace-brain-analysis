@@ -7,9 +7,11 @@ import json
 from pathlib import Path
 
 from backend.modules.registration import (
+    compute_landmark_residuals,
     estimate_affine_transform_2d,
     fit_affine_from_landmarks_csv,
     transform_rmse,
+    write_landmark_residuals_csv,
 )
 
 
@@ -46,6 +48,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="optional hemisphere label",
     )
+    parser.add_argument(
+        "--notes",
+        default=None,
+        help="optional provenance notes for the fitted registration",
+    )
+    parser.add_argument(
+        "--residuals-csv",
+        default=None,
+        help="path to write per-landmark residuals CSV",
+    )
     return parser
 
 
@@ -60,6 +72,8 @@ def build_manifest_payload(
     hemisphere: str | None = None,
     registration_rmse_px: float | None = None,
     landmark_count: int | None = None,
+    landmark_source_file: str | None = None,
+    notes: str | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "image_name": image_name,
@@ -83,6 +97,14 @@ def build_manifest_payload(
             payload["registration_qc"]["landmark_rmse_px"] = registration_rmse_px
         if landmark_count is not None:
             payload["registration_qc"]["landmark_count"] = landmark_count
+    payload["registration_provenance"] = {
+        "method": "landmark_affine_fit",
+        "generated_by": "backend/fit_affine_registration.py",
+    }
+    if landmark_source_file is not None:
+        payload["registration_provenance"]["source_file"] = landmark_source_file
+    if notes is not None:
+        payload["registration_provenance"]["notes"] = notes
     return payload
 
 
@@ -91,6 +113,7 @@ def main() -> None:
     landmarks = fit_affine_from_landmarks_csv(args.landmarks_csv)
     transform = estimate_affine_transform_2d(landmarks)
     rmse_px = transform_rmse(landmarks, transform)
+    residuals = compute_landmark_residuals(landmarks, transform)
 
     payload = build_manifest_payload(
         image_name=args.image_name,
@@ -103,12 +126,21 @@ def main() -> None:
         hemisphere=args.hemisphere,
         registration_rmse_px=rmse_px,
         landmark_count=len(landmarks),
+        landmark_source_file=args.landmarks_csv,
+        notes=args.notes,
     )
 
     output_path = Path(args.output_json)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    residuals_csv = (
+        Path(args.residuals_csv)
+        if args.residuals_csv
+        else output_path.with_name(f"{output_path.stem}_landmark_residuals.csv")
+    )
+    write_landmark_residuals_csv(residuals, residuals_csv)
     print(f"wrote affine registration manifest to {output_path}")
+    print(f"wrote landmark residuals to {residuals_csv}")
     print(f"landmark rmse: {rmse_px:.4f} px across {len(landmarks)} landmarks")
 
 

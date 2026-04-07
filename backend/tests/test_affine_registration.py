@@ -2,9 +2,11 @@ from pathlib import Path
 
 from backend.modules.registration import (
     LandmarkPair,
+    compute_landmark_residuals,
     estimate_affine_transform_2d,
     fit_affine_from_landmarks_csv,
     transform_rmse,
+    write_landmark_residuals_csv,
 )
 
 
@@ -51,3 +53,20 @@ def test_estimate_affine_transform_2d_rejects_degenerate_landmarks() -> None:
         return
 
     raise AssertionError("expected degenerate landmarks to fail")
+
+
+def test_write_landmark_residuals_csv_writes_distances(tmp_path: Path) -> None:
+    landmarks = [
+        LandmarkPair(0.0, 0.0, 10.0, 20.0, label="a"),
+        LandmarkPair(1.0, 0.0, 11.0, 20.0, label="b"),
+        LandmarkPair(0.0, 1.0, 10.0, 21.0, label="c"),
+    ]
+    transform = estimate_affine_transform_2d(landmarks)
+    residuals = compute_landmark_residuals(landmarks, transform)
+    output_path = tmp_path / "residuals.csv"
+
+    write_landmark_residuals_csv(residuals, output_path)
+
+    rows = output_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(rows) == 4
+    assert "residual_distance_px" in rows[0]

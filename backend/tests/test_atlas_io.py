@@ -5,6 +5,8 @@ from pathlib import Path
 from backend.modules.atlas import (
     AffineTransform2D,
     AtlasRegistrationManifest,
+    RegistrationProvenance,
+    RegistrationQc,
     RegionAssignmentRecord,
     RegionAssignmentQcSummary,
 )
@@ -119,8 +121,22 @@ def test_load_registration_manifest_resolves_relative_asset_paths(tmp_path: Path
                     "source_space": "image_px",
                     "target_space": "atlas_px",
                 },
+                "registration_qc": {
+                    "landmark_rmse_px": 0.4,
+                    "landmark_count": 5,
+                },
+                "registration_provenance": {
+                    "method": "landmark_affine_fit",
+                    "source_file": "landmarks.csv",
+                    "generated_by": "backend/fit_affine_registration.py",
+                    "notes": "synthetic test",
+                },
             }
         ),
+        encoding="utf-8",
+    )
+    (tmp_path / "landmarks.csv").write_text(
+        "source_x_px,source_y_px,atlas_x_px,atlas_y_px\n0,0,0,0\n1,0,1,0\n0,1,0,1\n",
         encoding="utf-8",
     )
 
@@ -128,6 +144,13 @@ def test_load_registration_manifest_resolves_relative_asset_paths(tmp_path: Path
 
     assert manifest.annotation_image_path == annotation.resolve()
     assert manifest.structures_csv_path == structures.resolve()
+    assert manifest.registration_qc == RegistrationQc(landmark_rmse_px=0.4, landmark_count=5)
+    assert manifest.registration_provenance == RegistrationProvenance(
+        method="landmark_affine_fit",
+        source_file=(tmp_path / "landmarks.csv").resolve(),
+        generated_by="backend/fit_affine_registration.py",
+        notes="synthetic test",
+    )
 
 
 def test_write_assignment_review_csv_filters_to_actionable_rows(tmp_path: Path) -> None:

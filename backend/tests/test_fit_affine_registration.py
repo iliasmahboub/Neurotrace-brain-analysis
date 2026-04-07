@@ -13,8 +13,12 @@ def test_build_manifest_payload_includes_registration_qc() -> None:
         hemisphere="left",
         registration_rmse_px=0.25,
         landmark_count=4,
+        landmark_source_file="landmarks.csv",
+        notes="paired by hand",
     )
 
     assert payload["transform"]["matrix"][0][2] == 10.0
     assert payload["registration_qc"]["landmark_rmse_px"] == 0.25
     assert payload["registration_qc"]["landmark_count"] == 4
+    assert payload["registration_provenance"]["method"] == "landmark_affine_fit"
+    assert payload["registration_provenance"]["source_file"] == "landmarks.csv"

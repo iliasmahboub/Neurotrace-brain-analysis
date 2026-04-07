@@ -39,6 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="optional hemisphere label",
     )
+    parser.add_argument(
+        "--notes",
+        default=None,
+        help="optional provenance notes for this starter manifest",
+    )
     return parser
 
 
@@ -50,6 +55,7 @@ def build_manifest_payload(
     atlas_resolution_um: float,
     slice_index: int | None = None,
     hemisphere: str | None = None,
+    notes: str | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "image_name": image_name,
@@ -71,6 +77,12 @@ def build_manifest_payload(
         payload["slice_index"] = slice_index
     if hemisphere is not None:
         payload["hemisphere"] = hemisphere
+    payload["registration_provenance"] = {
+        "method": "manual_template",
+        "generated_by": "backend/create_registration_manifest.py",
+    }
+    if notes is not None:
+        payload["registration_provenance"]["notes"] = notes
     return payload
 
 
@@ -86,6 +98,7 @@ def main() -> None:
         atlas_resolution_um=args.atlas_resolution_um,
         slice_index=args.slice_index,
         hemisphere=args.hemisphere,
+        notes=args.notes,
     )
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"wrote starter manifest to {output_path}")

@@ -20,6 +20,20 @@ class LandmarkPair:
     label: str | None = None
 
 
+@dataclass(frozen=True)
+class LandmarkResidual:
+    label: str | None
+    source_x_px: float
+    source_y_px: float
+    atlas_x_px: float
+    atlas_y_px: float
+    predicted_atlas_x_px: float
+    predicted_atlas_y_px: float
+    residual_x_px: float
+    residual_y_px: float
+    residual_distance_px: float
+
+
 def fit_affine_from_landmarks_csv(path: str | Path) -> list[LandmarkPair]:
     pairs: list[LandmarkPair] = []
     with Path(path).open("r", newline="", encoding="utf-8") as handle:
@@ -84,3 +98,68 @@ def transform_rmse(landmarks: list[LandmarkPair], transform: AffineTransform2D) 
         squared_errors.append((predicted_x - pair.atlas_x_px) ** 2 + (predicted_y - pair.atlas_y_px) ** 2)
 
     return float(np.sqrt(sum(squared_errors) / len(squared_errors)))
+
+
+def compute_landmark_residuals(
+    landmarks: list[LandmarkPair],
+    transform: AffineTransform2D,
+) -> list[LandmarkResidual]:
+    residuals: list[LandmarkResidual] = []
+    for pair in landmarks:
+        predicted_x, predicted_y = transform.apply(pair.source_x_px, pair.source_y_px)
+        residual_x = predicted_x - pair.atlas_x_px
+        residual_y = predicted_y - pair.atlas_y_px
+        residuals.append(
+            LandmarkResidual(
+                label=pair.label,
+                source_x_px=pair.source_x_px,
+                source_y_px=pair.source_y_px,
+                atlas_x_px=pair.atlas_x_px,
+                atlas_y_px=pair.atlas_y_px,
+                predicted_atlas_x_px=predicted_x,
+                predicted_atlas_y_px=predicted_y,
+                residual_x_px=residual_x,
+                residual_y_px=residual_y,
+                residual_distance_px=float(np.sqrt(residual_x ** 2 + residual_y ** 2)),
+            )
+        )
+    return residuals
+
+
+def write_landmark_residuals_csv(
+    residuals: list[LandmarkResidual],
+    path: str | Path,
+) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "label",
+                "source_x_px",
+                "source_y_px",
+                "atlas_x_px",
+                "atlas_y_px",
+                "predicted_atlas_x_px",
+                "predicted_atlas_y_px",
+                "residual_x_px",
+                "residual_y_px",
+                "residual_distance_px",
+            ]
+        )
+        for item in residuals:
+            writer.writerow(
+                [
+                    item.label or "",
+                    round(item.source_x_px, 6),
+                    round(item.source_y_px, 6),
+                    round(item.atlas_x_px, 6),
+                    round(item.atlas_y_px, 6),
+                    round(item.predicted_atlas_x_px, 6),
+                    round(item.predicted_atlas_y_px, 6),
+                    round(item.residual_x_px, 6),
+                    round(item.residual_y_px, 6),
+                    round(item.residual_distance_px, 6),
+                ]
+            )

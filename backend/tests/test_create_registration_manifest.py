@@ -10,6 +10,7 @@ def test_build_manifest_payload_uses_identity_transform_template() -> None:
         atlas_resolution_um=25.0,
         slice_index=12,
         hemisphere="left",
+        notes="draft template",
     )
 
     assert payload["image_name"] == "slice_a.tif"
@@ -25,3 +26,5 @@ def test_build_manifest_payload_uses_identity_transform_template() -> None:
         "source_space": "image_px",
         "target_space": "atlas_px",
     }
+    assert payload["registration_provenance"]["method"] == "manual_template"
+    assert payload["registration_provenance"]["notes"] == "draft template"

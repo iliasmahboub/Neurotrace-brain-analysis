@@ -44,6 +44,38 @@ class AffineTransform2D:
 
 
 @dataclass(frozen=True)
+class RegistrationQc:
+    """Metadata describing registration fit quality."""
+
+    landmark_rmse_px: float | None = None
+    landmark_count: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.landmark_rmse_px is not None and self.landmark_rmse_px < 0:
+            raise ValueError("landmark_rmse_px must be non-negative when provided")
+        if self.landmark_count is not None and self.landmark_count <= 0:
+            raise ValueError("landmark_count must be positive when provided")
+
+
+@dataclass(frozen=True)
+class RegistrationProvenance:
+    """Provenance describing how the registration manifest was produced."""
+
+    method: str
+    source_file: Path | None = None
+    notes: str | None = None
+    generated_by: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.method.strip():
+            raise ValueError("registration provenance method must not be empty")
+        if self.notes is not None and not self.notes.strip():
+            raise ValueError("registration provenance notes must not be empty when provided")
+        if self.generated_by is not None and not self.generated_by.strip():
+            raise ValueError("registration provenance generated_by must not be empty when provided")
+
+
+@dataclass(frozen=True)
 class AtlasRegistrationManifest:
     """Description of the files and transforms needed for region assignment."""
 
@@ -55,6 +87,8 @@ class AtlasRegistrationManifest:
     transform: AffineTransform2D
     slice_index: int | None = None
     hemisphere: str | None = None
+    registration_qc: RegistrationQc | None = None
+    registration_provenance: RegistrationProvenance | None = None
 
     def __post_init__(self) -> None:
         if not self.image_name.strip():
