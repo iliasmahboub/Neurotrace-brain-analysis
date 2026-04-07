@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import statistics
 from collections import defaultdict
 from pathlib import Path
 
@@ -45,13 +46,15 @@ def read_region_summary_csv(path: str | Path) -> list[dict[str, str]]:
 
 
 def aggregate_jobs(jobs: list[dict[str, str]]) -> list[dict[str, str | float | int]]:
-    grouped: dict[tuple[str, str, str, str, str, str], dict[str, float | int | set[str]]] = defaultdict(
+    grouped: dict[tuple[str, str, str, str, str, str], dict[str, object]] = defaultdict(
         lambda: {
             "slice_count": 0,
             "animal_ids": set(),
             "total_cell_count": 0,
             "density_sum": 0.0,
             "density_count": 0,
+            "animal_cell_counts": defaultdict(int),
+            "animal_density_values": defaultdict(list),
         }
     )
 
@@ -68,19 +71,40 @@ def aggregate_jobs(jobs: list[dict[str, str]]) -> list[dict[str, str | float | i
             )
             bucket = grouped[key]
             bucket["slice_count"] += 1
-            bucket["animal_ids"].add(job["animal_id"])
+            animal_id = job["animal_id"]
+            animal_ids = bucket["animal_ids"]
+            assert isinstance(animal_ids, set)
+            animal_ids.add(animal_id)
             bucket["total_cell_count"] += int(row["cell_count"])
+            animal_cell_counts = bucket["animal_cell_counts"]
+            assert isinstance(animal_cell_counts, defaultdict)
+            animal_cell_counts[animal_id] += int(row["cell_count"])
 
             density_value = row.get("cell_density_per_mm2", "")
             if density_value:
                 bucket["density_sum"] += float(density_value)
                 bucket["density_count"] += 1
+                animal_density_values = bucket["animal_density_values"]
+                assert isinstance(animal_density_values, defaultdict)
+                animal_density_values[animal_id].append(float(density_value))
 
     aggregated_rows: list[dict[str, str | float | int]] = []
     for key, bucket in grouped.items():
         cohort_label, condition, atlas_name, region_id, region_acronym, region_name = key
         density_count = int(bucket["density_count"])
         mean_density = (bucket["density_sum"] / density_count) if density_count > 0 else ""
+        animal_ids = bucket["animal_ids"]
+        animal_cell_counts = bucket["animal_cell_counts"]
+        animal_density_values = bucket["animal_density_values"]
+        assert isinstance(animal_ids, set)
+        assert isinstance(animal_cell_counts, defaultdict)
+        assert isinstance(animal_density_values, defaultdict)
+        per_animal_cell_counts = list(animal_cell_counts.values())
+        per_animal_mean_densities = [
+            sum(values) / len(values)
+            for values in animal_density_values.values()
+            if len(values) > 0
+        ]
         aggregated_rows.append(
             {
                 "cohort_label": cohort_label,
@@ -89,11 +113,19 @@ def aggregate_jobs(jobs: list[dict[str, str]]) -> list[dict[str, str | float | i
                 "region_id": region_id,
                 "region_acronym": region_acronym,
                 "region_name": region_name,
-                "animal_count": len(bucket["animal_ids"]),
+                "animal_count": len(animal_ids),
                 "slice_count": int(bucket["slice_count"]),
                 "total_cell_count": int(bucket["total_cell_count"]),
                 "mean_cell_count_per_slice": int(bucket["total_cell_count"]) / int(bucket["slice_count"]),
                 "mean_density_per_mm2": mean_density,
+                "mean_cell_count_per_animal": _mean_or_blank(per_animal_cell_counts),
+                "median_cell_count_per_animal": _median_or_blank(per_animal_cell_counts),
+                "std_cell_count_per_animal": _std_or_blank(per_animal_cell_counts),
+                "sem_cell_count_per_animal": _sem_or_blank(per_animal_cell_counts),
+                "mean_density_per_animal_mm2": _mean_or_blank(per_animal_mean_densities),
+                "median_density_per_animal_mm2": _median_or_blank(per_animal_mean_densities),
+                "std_density_per_animal_mm2": _std_or_blank(per_animal_mean_densities),
+                "sem_density_per_animal_mm2": _sem_or_blank(per_animal_mean_densities),
             }
         )
 
@@ -123,6 +155,14 @@ def write_aggregated_csv(rows: list[dict[str, str | float | int]], path: str | P
         "total_cell_count",
         "mean_cell_count_per_slice",
         "mean_density_per_mm2",
+        "mean_cell_count_per_animal",
+        "median_cell_count_per_animal",
+        "std_cell_count_per_animal",
+        "sem_cell_count_per_animal",
+        "mean_density_per_animal_mm2",
+        "median_density_per_animal_mm2",
+        "std_density_per_animal_mm2",
+        "sem_density_per_animal_mm2",
     ]
 
     with output_path.open("w", newline="", encoding="utf-8") as handle:
@@ -145,6 +185,30 @@ def main() -> None:
     output_csv = Path(args.output_csv) if args.output_csv else default_output_path(jobs_path)
     write_aggregated_csv(rows, output_csv)
     print(f"wrote {len(rows)} cohort rows to {output_csv}")
+
+
+def _mean_or_blank(values: list[float | int]) -> float | str:
+    if not values:
+        return ""
+    return statistics.fmean(values)
+
+
+def _median_or_blank(values: list[float | int]) -> float | str:
+    if not values:
+        return ""
+    return float(statistics.median(values))
+
+
+def _std_or_blank(values: list[float | int]) -> float | str:
+    if len(values) < 2:
+        return ""
+    return float(statistics.stdev(values))
+
+
+def _sem_or_blank(values: list[float | int]) -> float | str:
+    if len(values) < 2:
+        return ""
+    return float(statistics.stdev(values) / (len(values) ** 0.5))
 
 
 if __name__ == "__main__":

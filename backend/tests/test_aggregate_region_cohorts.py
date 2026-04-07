@@ -99,3 +99,6 @@ def test_aggregate_jobs_groups_region_rows(tmp_path: Path) -> None:
     assert rows[0]["animal_count"] == 2
     assert rows[0]["slice_count"] == 2
     assert rows[0]["total_cell_count"] == 12
+    assert rows[0]["mean_cell_count_per_animal"] == 6.0
+    assert rows[0]["median_cell_count_per_animal"] == 6.0
+    assert rows[0]["mean_density_per_animal_mm2"] == 96.0
