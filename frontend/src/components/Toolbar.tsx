@@ -8,6 +8,7 @@ import {
   FileJson,
   RotateCcw,
   FolderDown,
+  DatabaseZap,
 } from 'lucide-react';
 import type { ViewState, DetectionResult, ImageData as NTImageData, BatchItem } from '../types';
 
@@ -24,6 +25,7 @@ interface ToolbarProps {
   batch: BatchItem[];
   onExportBatchCSV: () => void;
   onExportBatchJSON: () => void;
+  onUploadAtlasArtifacts: (files: File[]) => void;
 }
 
 export function Toolbar({
@@ -39,6 +41,7 @@ export function Toolbar({
   batch,
   onExportBatchCSV,
   onExportBatchJSON,
+  onUploadAtlasArtifacts,
 }: ToolbarProps) {
   const tools: Array<{ id: ViewState['tool']; icon: typeof Hand; label: string }> = [
     { id: 'pan', icon: Hand, label: 'Pan (Space+Drag)' },
@@ -82,6 +85,27 @@ export function Toolbar({
           onChange={e => {
             const files = Array.from(e.target.files ?? []);
             if (files.length > 0) onUpload(files);
+            e.target.value = '';
+          }}
+        />
+      </label>
+
+      <label
+        className="flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors"
+        style={{ color: 'var(--text-secondary)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      >
+        <DatabaseZap size={14} />
+        <span>Import Atlas Outputs</span>
+        <input
+          type="file"
+          accept=".csv,.json"
+          multiple
+          className="hidden"
+          onChange={e => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) onUploadAtlasArtifacts(files);
             e.target.value = '';
           }}
         />

@@ -14,9 +14,13 @@ import {
   X,
   Zap,
   Check,
+  Database,
+  AlertTriangle,
 } from 'lucide-react';
 import type {
   ImageData as NTImageData,
+  AtlasQcSummary,
+  AtlasRegionSummaryRow,
   ChannelState,
   DetectionParams,
   DetectionResult,
@@ -45,6 +49,9 @@ interface SidebarProps {
   activeBatchIndex: number;
   onBatchSelect: (index: number) => void;
   onBatchRemove: (index: number) => void;
+  atlasQcSummary: AtlasQcSummary | null;
+  atlasLeafSummary: AtlasRegionSummaryRow[];
+  atlasHierarchySummary: AtlasRegionSummaryRow[];
 }
 
 function Section({
@@ -111,6 +118,9 @@ export function Sidebar({
   activeBatchIndex,
   onBatchSelect,
   onBatchRemove,
+  atlasQcSummary,
+  atlasLeafSummary,
+  atlasHierarchySummary,
 }: SidebarProps) {
   if (!image && batch.length === 0) {
     return (
@@ -563,6 +573,127 @@ export function Sidebar({
                 )}
               </div>
             </div>
+          </div>
+        </Section>
+      )}
+
+      {(atlasQcSummary || atlasLeafSummary.length > 0 || atlasHierarchySummary.length > 0) && (
+        <Section
+          title="Atlas"
+          icon={Database}
+          badge={atlasQcSummary?.atlas_name ?? (atlasHierarchySummary.length > 0 ? 'loaded' : undefined)}
+        >
+          <div className="space-y-3">
+            {atlasQcSummary && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded p-2 text-center" style={{ background: 'var(--accent-dim)' }}>
+                    <div className="text-lg font-bold" style={{ color: 'var(--accent)' }}>
+                      {(atlasQcSummary.assigned_fraction * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                      Assigned
+                    </div>
+                  </div>
+                  <div className="rounded p-2 text-center" style={{ background: 'var(--danger-dim)' }}>
+                    <div className="text-lg font-bold" style={{ color: 'var(--danger)' }}>
+                      {atlasQcSummary.outside_atlas_cells + atlasQcSummary.unknown_region_cells}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                      Failures
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded p-2" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <AlertTriangle size={12} style={{ color: 'var(--warning)' }} />
+                    <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--warning)' }}>
+                      Boundary Risk
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+                    <div>Border: <span className="font-mono">{atlasQcSummary.border_cells}</span></div>
+                    <div>Near: <span className="font-mono">{atlasQcSummary.near_border_cells}</span></div>
+                    <div>Interior: <span className="font-mono">{atlasQcSummary.interior_cells}</span></div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {atlasLeafSummary.length > 0 && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
+                  Top Leaf Regions
+                </div>
+                <div className="max-h-36 overflow-y-auto rounded" style={{ background: 'var(--bg-primary)' }}>
+                  <table className="w-full text-[10px]">
+                    <thead>
+                      <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+                        <th className="py-1 px-2 text-left font-medium">Region</th>
+                        <th className="py-1 px-2 text-right font-medium">Cells</th>
+                        <th className="py-1 px-2 text-right font-medium">Density</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {atlasLeafSummary
+                        .slice()
+                        .sort((left, right) => Number(right.cell_count) - Number(left.cell_count))
+                        .slice(0, 8)
+                        .map(row => (
+                          <tr key={`${row.region_id}-${row.region_name}`} style={{ color: 'var(--text-secondary)' }}>
+                            <td className="py-1 px-2">
+                              <div className="truncate">{row.region_acronym || row.region_name}</div>
+                            </td>
+                            <td className="py-1 px-2 text-right font-mono">{row.cell_count}</td>
+                            <td className="py-1 px-2 text-right font-mono">
+                              {row.cell_density_per_mm2 ? Number(row.cell_density_per_mm2).toFixed(1) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {atlasHierarchySummary.length > 0 && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
+                  Parent Regions
+                </div>
+                <div className="space-y-1">
+                  {atlasHierarchySummary
+                    .filter(row => Number(row.child_region_count || '0') > 1)
+                    .sort((left, right) => Number(right.cell_count) - Number(left.cell_count))
+                    .slice(0, 5)
+                    .map(row => (
+                      <div
+                        key={`${row.region_id}-${row.region_name}`}
+                        className="rounded px-2 py-1.5 flex items-center gap-2"
+                        style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>
+                            {row.region_name}
+                          </div>
+                          <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                            {row.child_region_count} child regions
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-bold" style={{ color: 'var(--accent)' }}>
+                            {row.cell_count}
+                          </div>
+                          <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                            cells
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </Section>
       )}

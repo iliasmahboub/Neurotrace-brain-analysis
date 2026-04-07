@@ -75,6 +75,42 @@ export interface BatchItem {
   detection: DetectionResult | null;
 }
 
+export interface AtlasQcSummary {
+  image_name: string;
+  atlas_name: string;
+  total_cells: number;
+  assigned_cells: number;
+  unknown_region_cells: number;
+  outside_atlas_cells: number;
+  border_cells: number;
+  near_border_cells: number;
+  interior_cells: number;
+  assigned_fraction: number;
+  unknown_region_fraction: number;
+  outside_atlas_fraction: number;
+  border_fraction_within_assigned: number;
+  near_border_fraction_within_assigned: number;
+  interior_fraction_within_assigned: number;
+}
+
+export interface AtlasRegionSummaryRow {
+  image_name: string;
+  atlas_name: string;
+  slice_index: string;
+  hemisphere: string;
+  region_id: string;
+  region_acronym: string;
+  region_name: string;
+  hierarchy_level?: string;
+  child_region_count?: string;
+  cell_count: string;
+  atlas_resolution_um: string;
+  pixel_area_um2: string;
+  region_area_px: string;
+  region_area_um2: string;
+  cell_density_per_mm2: string;
+}
+
 export interface AppState {
   image: ImageData | null;
   detection: DetectionResult | null;

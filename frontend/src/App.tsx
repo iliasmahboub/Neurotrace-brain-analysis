@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   ImageData as NTImageData,
+  AtlasQcSummary,
+  AtlasRegionSummaryRow,
   ChannelState,
   DetectionParams,
   DetectionExportContext,
@@ -8,6 +10,7 @@ import type {
   BatchItem,
 } from './types';
 import { loadImage } from './lib/tiff-loader';
+import { parseAtlasQcSummary, parseAtlasSummaryRows } from './lib/atlas-import';
 import { detectCells } from './lib/detection';
 import { exportCSV, exportBatchCSV, exportBatchJson, exportDetectionJson, exportPNG } from './lib/export';
 import { Toolbar } from './components/Toolbar';
@@ -48,6 +51,9 @@ export default function App() {
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [activeChannel, setActiveChannel] = useState(1);
   const [statusMessage, setStatusMessage] = useState('');
+  const [atlasQcSummary, setAtlasQcSummary] = useState<AtlasQcSummary | null>(null);
+  const [atlasLeafSummary, setAtlasLeafSummary] = useState<AtlasRegionSummaryRow[]>([]);
+  const [atlasHierarchySummary, setAtlasHierarchySummary] = useState<AtlasRegionSummaryRow[]>([]);
 
   const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -237,6 +243,46 @@ export default function App() {
     e.preventDefault();
   }, []);
 
+  const handleUploadAtlasArtifacts = useCallback(async (files: File[]) => {
+    let loadedQc = false;
+    let loadedLeaf = false;
+    let loadedHierarchy = false;
+
+    for (const file of files) {
+      try {
+        const normalizedName = file.name.toLowerCase();
+        if (normalizedName.endsWith('.json')) {
+          setAtlasQcSummary(await parseAtlasQcSummary(file));
+          loadedQc = true;
+          continue;
+        }
+
+        if (normalizedName.includes('hierarchy')) {
+          setAtlasHierarchySummary(await parseAtlasSummaryRows(file));
+          loadedHierarchy = true;
+          continue;
+        }
+
+        if (normalizedName.endsWith('.csv')) {
+          setAtlasLeafSummary(await parseAtlasSummaryRows(file));
+          loadedLeaf = true;
+        }
+      } catch (error) {
+        setStatusMessage(`Atlas import error for ${file.name}: ${error instanceof Error ? error.message : 'Failed'}`);
+      }
+    }
+
+    const loadedParts = [
+      loadedQc ? 'qc' : null,
+      loadedLeaf ? 'leaf summary' : null,
+      loadedHierarchy ? 'hierarchy summary' : null,
+    ].filter(Boolean);
+
+    if (loadedParts.length > 0) {
+      setStatusMessage(`Imported atlas outputs: ${loadedParts.join(', ')}`);
+    }
+  }, []);
+
   return (
     <div
       className="h-full flex flex-col"
@@ -245,6 +291,7 @@ export default function App() {
     >
       <Toolbar
         onUpload={handleUpload}
+        onUploadAtlasArtifacts={handleUploadAtlasArtifacts}
         view={view}
         onViewChange={handleViewChange}
         onResetView={handleResetView}
@@ -295,6 +342,9 @@ export default function App() {
           activeBatchIndex={activeBatchIndex}
           onBatchSelect={setActiveBatchIndex}
           onBatchRemove={handleRemoveFromBatch}
+          atlasQcSummary={atlasQcSummary}
+          atlasLeafSummary={atlasLeafSummary}
+          atlasHierarchySummary={atlasHierarchySummary}
         />
       </div>
 
