@@ -32,6 +32,7 @@ This writes four outputs:
 - `*_regions_hierarchy_summary.csv`: hierarchy-aware parent-region rollups
 - `*_regions_qc.json`: assignment status fractions and boundary-risk counts
 - `*_regions_qc_overlay.png`: visual QC overlay for assigned and failed cells
+- `*_regions_review.csv`: prioritized review queue for failed and border-adjacent cells
 
 ## Minimal Public Example
 
@@ -75,6 +76,16 @@ The cohort output includes:
 - mean and median counts per animal
 - mean density summaries
 - variability estimates across animals
+
+## 5. Review Outputs in the Frontend
+
+The NeuroTrace frontend can import atlas outputs directly:
+
+- QC JSON
+- leaf summary CSV
+- hierarchy summary CSV
+
+Use `Import Atlas Outputs` in the toolbar to load those artifacts and inspect assignment quality and top regions in the sidebar.
 
 ## Current Boundary
 

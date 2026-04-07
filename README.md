@@ -26,8 +26,9 @@ Implemented today:
 - Run batch detection across multiple loaded images in the frontend.
 - Run a backend Cellpose pipeline that exports both an overlay figure and per-cell measurements.
 - Assign detected cells to atlas regions using an explicit registration manifest.
-- Export per-slice leaf-region summaries, hierarchy-aware parent-region summaries, and QC JSON reports.
+- Export per-slice leaf-region summaries, hierarchy-aware parent-region summaries, QC reports, review queues, and QC overlays.
 - Aggregate cohort-level summaries across animals and conditions with animal-level descriptive statistics.
+- Import atlas QC and summary outputs back into the frontend for review.
 
 Not implemented yet:
 
