@@ -18,6 +18,7 @@ try:
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
+        write_assignment_review_csv,
         write_region_assignments_csv,
         write_region_count_summary_csv,
         write_region_hierarchy_summary_csv,
@@ -34,6 +35,7 @@ except ModuleNotFoundError:
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
+        write_assignment_review_csv,
         write_region_assignments_csv,
         write_region_count_summary_csv,
         write_region_hierarchy_summary_csv,
@@ -87,6 +89,8 @@ def main() -> None:
         write_region_hierarchy_summary_csv(hierarchy_summaries, hierarchy_csv)
         qc_json = Path(job["summary_csv"]).with_suffix(".qc.json")
         write_assignment_qc_summary_json(qc_summary, qc_json)
+        review_csv = Path(job["summary_csv"]).with_name(f"{Path(job['summary_csv']).stem}_review.csv")
+        write_assignment_review_csv(assignments, review_csv)
         qc_overlay_png = Path(job["summary_csv"]).with_suffix(".qc.png")
         save_assignment_qc_overlay(
             annotation_image=annotation_image,

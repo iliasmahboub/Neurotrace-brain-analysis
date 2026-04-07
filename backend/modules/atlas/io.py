@@ -111,6 +111,63 @@ def write_region_assignments_csv(
             )
 
 
+def write_assignment_review_csv(
+    assignments: list[RegionAssignmentRecord],
+    path: str | Path,
+) -> None:
+    """Write a review-priority CSV containing failed and border-adjacent assignments."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    flagged = [
+      item for item in assignments
+      if item.assignment_status != "assigned"
+      or item.region_boundary_proximity in {"border", "near_border"}
+    ]
+
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "image_name",
+                "atlas_name",
+                "cell_id",
+                "source_x_px",
+                "source_y_px",
+                "atlas_x_um",
+                "atlas_y_um",
+                "region_id",
+                "region_acronym",
+                "region_name",
+                "assignment_status",
+                "region_boundary_distance_um",
+                "region_boundary_proximity",
+                "review_priority",
+            ]
+        )
+        for item in flagged:
+            writer.writerow(
+                [
+                    item.image_name,
+                    item.atlas_name,
+                    item.cell_id,
+                    round(item.source_x_px, 4),
+                    round(item.source_y_px, 4),
+                    round(item.atlas_x_um, 4),
+                    round(item.atlas_y_um, 4),
+                    item.region_id if item.region_id is not None else "",
+                    item.region_acronym or "",
+                    item.region_name or "",
+                    item.assignment_status,
+                    round(item.region_boundary_distance_um, 6)
+                    if item.region_boundary_distance_um is not None
+                    else "",
+                    item.region_boundary_proximity or "",
+                    _classify_review_priority(item),
+                ]
+            )
+
+
 def write_region_count_summary_csv(
     summaries: list[RegionCountSummary],
     path: str | Path,
@@ -292,3 +349,13 @@ def _first_present(row: dict[str, str], *keys: str) -> str:
         if value is not None and value != "":
             return value
     raise KeyError(f"expected one of {keys!r} in structures csv row")
+
+
+def _classify_review_priority(item: RegionAssignmentRecord) -> str:
+    if item.assignment_status == "outside_atlas":
+        return "critical"
+    if item.assignment_status == "unknown_region":
+        return "high"
+    if item.region_boundary_proximity == "border":
+        return "medium"
+    return "low"

@@ -5,6 +5,7 @@ from pathlib import Path
 from backend.modules.atlas import (
     AffineTransform2D,
     AtlasRegistrationManifest,
+    RegionAssignmentRecord,
     RegionAssignmentQcSummary,
 )
 from backend.modules.atlas.io import (
@@ -12,6 +13,7 @@ from backend.modules.atlas.io import (
     validate_atlas_region_table,
     validate_manifest_assets,
     write_assignment_qc_summary_json,
+    write_assignment_review_csv,
 )
 
 
@@ -126,3 +128,60 @@ def test_load_registration_manifest_resolves_relative_asset_paths(tmp_path: Path
 
     assert manifest.annotation_image_path == annotation.resolve()
     assert manifest.structures_csv_path == structures.resolve()
+
+
+def test_write_assignment_review_csv_filters_to_actionable_rows(tmp_path: Path) -> None:
+    output_path = tmp_path / "review.csv"
+    write_assignment_review_csv(
+        [
+            RegionAssignmentRecord(
+                image_name="slice_a.tif",
+                atlas_name="allen_mouse_25um",
+                cell_id=1,
+                source_x_px=0.0,
+                source_y_px=0.0,
+                atlas_x_um=0.0,
+                atlas_y_um=0.0,
+                region_id=10,
+                region_acronym="ILA",
+                region_name="Infralimbic area",
+                assignment_status="assigned",
+                region_boundary_distance_um=10.0,
+                region_boundary_proximity="border",
+            ),
+            RegionAssignmentRecord(
+                image_name="slice_a.tif",
+                atlas_name="allen_mouse_25um",
+                cell_id=2,
+                source_x_px=1.0,
+                source_y_px=1.0,
+                atlas_x_um=25.0,
+                atlas_y_um=25.0,
+                region_id=10,
+                region_acronym="ILA",
+                region_name="Infralimbic area",
+                assignment_status="assigned",
+                region_boundary_distance_um=120.0,
+                region_boundary_proximity="interior",
+            ),
+            RegionAssignmentRecord(
+                image_name="slice_a.tif",
+                atlas_name="allen_mouse_25um",
+                cell_id=3,
+                source_x_px=2.0,
+                source_y_px=2.0,
+                atlas_x_um=50.0,
+                atlas_y_um=50.0,
+                region_id=None,
+                region_acronym=None,
+                region_name=None,
+                assignment_status="outside_atlas",
+            ),
+        ],
+        output_path,
+    )
+
+    rows = output_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(rows) == 3
+    assert "medium" in rows[1]
+    assert "critical" in rows[2]

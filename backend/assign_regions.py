@@ -18,6 +18,7 @@ try:
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
+        write_assignment_review_csv,
         write_region_count_summary_csv,
         write_region_hierarchy_summary_csv,
         write_region_assignments_csv,
@@ -34,6 +35,7 @@ except ModuleNotFoundError:
         summarize_region_assignments,
         summarize_region_assignments_hierarchy,
         write_assignment_qc_summary_json,
+        write_assignment_review_csv,
         write_region_count_summary_csv,
         write_region_hierarchy_summary_csv,
         write_region_assignments_csv,
@@ -106,6 +108,8 @@ def main() -> None:
     write_region_hierarchy_summary_csv(hierarchy_summaries, hierarchy_csv)
     qc_json = Path(args.qc_json) if args.qc_json else output_csv.with_name(f"{output_csv.stem}_qc.json")
     write_assignment_qc_summary_json(qc_summary, qc_json)
+    review_csv = output_csv.with_name(f"{output_csv.stem}_review.csv")
+    write_assignment_review_csv(assignments, review_csv)
     qc_overlay_png = (
         Path(args.qc_overlay_png)
         if args.qc_overlay_png
@@ -123,6 +127,7 @@ def main() -> None:
     print(f"wrote {len(summaries)} region summaries to {summary_csv}")
     print(f"wrote {len(hierarchy_summaries)} hierarchy summaries to {hierarchy_csv}")
     print(f"wrote assignment qc summary to {qc_json}")
+    print(f"wrote assignment review queue to {review_csv}")
     print(f"wrote assignment qc overlay to {qc_overlay_png}")
     print(
         "assignment summary: "
