@@ -30,6 +30,7 @@ Implemented today:
 - Export per-slice leaf-region summaries, hierarchy-aware parent-region summaries, QC reports, review queues, and QC overlays.
 - Aggregate cohort-level summaries across animals and conditions with animal-level descriptive statistics.
 - Import atlas QC and summary outputs back into the frontend for review.
+- Track registration provenance and generate registration fit reports from landmark residuals.
 
 Not implemented yet:
 

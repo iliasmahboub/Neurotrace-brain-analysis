@@ -36,6 +36,16 @@ Expected landmark columns:
 
 The fitted manifest includes a `registration_qc` block with landmark count and landmark RMSE in atlas-pixel space.
 
+The fitting command also writes a per-landmark residuals CSV by default:
+
+- `*_landmark_residuals.csv`
+
+You can turn the fitted manifest and residuals into a Markdown summary with:
+
+```bash
+python backend/report_registration_fit.py path/to/manifest.json path/to/manifest_landmark_residuals.csv
+```
+
 ## 2. Run Region Assignment
 
 ```bash
@@ -112,6 +122,7 @@ What NeuroTrace does today:
 - hierarchy-aware regional summaries
 - QC summaries for assignment failures and border-adjacent cells
 - cohort aggregation across animals and conditions
+- landmark-based affine registration fitting with provenance and residual reporting
 
 What NeuroTrace does not do yet:
 
