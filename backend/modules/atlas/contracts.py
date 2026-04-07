@@ -22,6 +22,13 @@ class AffineTransform2D:
     source_space: str
     target_space: str
 
+    def __post_init__(self) -> None:
+        if not self.source_space.strip():
+            raise ValueError("source_space must not be empty")
+        if not self.target_space.strip():
+            raise ValueError("target_space must not be empty")
+        self.as_array()
+
     def as_array(self) -> np.ndarray:
         array = np.asarray(self.matrix, dtype=np.float64)
         if array.shape != (3, 3):

@@ -34,13 +34,13 @@ def load_registration_manifest(path: str | Path) -> AtlasRegistrationManifest:
         image_name=str(payload["image_name"]),
         atlas_name=str(payload["atlas_name"]),
         atlas_resolution_um=float(payload["atlas_resolution_um"]),
-        annotation_image_path=Path(payload["annotation_image_path"]),
-        structures_csv_path=Path(payload["structures_csv_path"]),
+        annotation_image_path=_resolve_path(Path(payload["annotation_image_path"]), manifest_path.parent),
+        structures_csv_path=_resolve_path(Path(payload["structures_csv_path"]), manifest_path.parent),
         transform=transform,
         slice_index=int(payload["slice_index"]) if payload.get("slice_index") is not None else None,
         hemisphere=str(payload["hemisphere"]) if payload.get("hemisphere") is not None else None,
     )
-    validate_manifest_assets(manifest, manifest_path.parent)
+    validate_manifest_assets(manifest)
     return manifest
 
 
@@ -242,6 +242,36 @@ def validate_manifest_assets(
         raise FileNotFoundError(f"annotation image not found: {annotation_path}")
     if not structures_path.exists():
         raise FileNotFoundError(f"structures csv not found: {structures_path}")
+    if annotation_path.is_dir():
+        raise IsADirectoryError(f"annotation image path must be a file: {annotation_path}")
+    if structures_path.is_dir():
+        raise IsADirectoryError(f"structures csv path must be a file: {structures_path}")
+    validate_atlas_region_table(structures_path)
+
+
+def validate_atlas_region_table(path: str | Path) -> None:
+    """Validate that the atlas structures CSV has the required metadata columns."""
+    with Path(path).open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames is None:
+            raise ValueError("structures csv must have a header row")
+
+        fieldnames = set(reader.fieldnames)
+        if not ({"id", "region_id", "structure_id"} & fieldnames):
+            raise ValueError("structures csv must include an ID column")
+        if not ({"acronym", "region_acronym"} & fieldnames):
+            raise ValueError("structures csv must include an acronym column")
+        if not ({"name", "region_name", "safe_name"} & fieldnames):
+            raise ValueError("structures csv must include a name column")
+
+        seen_ids: set[int] = set()
+        for row in reader:
+            region_id = int(_first_present(row, "id", "region_id", "structure_id"))
+            if region_id <= 0:
+                raise ValueError(f"region IDs must be positive, got {region_id}")
+            if region_id in seen_ids:
+                raise ValueError(f"duplicate region ID found in structures csv: {region_id}")
+            seen_ids.add(region_id)
 
 
 def _resolve_path(path: Path, base_path: Path | None) -> Path:
@@ -254,3 +284,11 @@ def _safe_fraction(numerator: int, denominator: int) -> float:
     if denominator <= 0:
         return 0.0
     return numerator / denominator
+
+
+def _first_present(row: dict[str, str], *keys: str) -> str:
+    for key in keys:
+        value = row.get(key)
+        if value is not None and value != "":
+            return value
+    raise KeyError(f"expected one of {keys!r} in structures csv row")
