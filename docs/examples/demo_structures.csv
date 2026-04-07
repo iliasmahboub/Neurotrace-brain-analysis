@@ -1,0 +1,4 @@
+id,acronym,name,parent_structure_id
+10,ILA,Infralimbic area,20
+11,PL,Prelimbic area,20
+20,mPFC,Medial prefrontal cortex,

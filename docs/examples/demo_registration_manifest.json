@@ -1,0 +1,18 @@
+{
+  "image_name": "demo_slice.tif",
+  "atlas_name": "demo_atlas_25um",
+  "atlas_resolution_um": 25.0,
+  "annotation_image_path": "../../docs/examples/demo_annotation.tif",
+  "structures_csv_path": "../../docs/examples/demo_structures.csv",
+  "slice_index": 12,
+  "hemisphere": "left",
+  "transform": {
+    "matrix": [
+      [1.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0],
+      [0.0, 0.0, 1.0]
+    ],
+    "source_space": "image_px",
+    "target_space": "atlas_px"
+  }
+}

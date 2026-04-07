@@ -31,6 +31,23 @@ This writes four outputs:
 - `*_regions_summary.csv`: per-slice leaf-region counts and densities
 - `*_regions_hierarchy_summary.csv`: hierarchy-aware parent-region rollups
 - `*_regions_qc.json`: assignment status fractions and boundary-risk counts
+- `*_regions_qc_overlay.png`: visual QC overlay for assigned and failed cells
+
+## Minimal Public Example
+
+The repo includes a synthetic example bundle in [`docs/examples`](/C:/Users/ilyas/neurotrace/docs/examples):
+
+- [`demo_registration_manifest.json`](/C:/Users/ilyas/neurotrace/docs/examples/demo_registration_manifest.json)
+- [`demo_structures.csv`](/C:/Users/ilyas/neurotrace/docs/examples/demo_structures.csv)
+- [`demo_detections.csv`](/C:/Users/ilyas/neurotrace/docs/examples/demo_detections.csv)
+
+To complete the example, create a small integer-valued annotation TIFF at `docs/examples/demo_annotation.tif` or replace the manifest path with your own annotation file. The manifest and CSVs are valid examples of the expected contract even without private data.
+
+You can generate the demo annotation file with:
+
+```bash
+python backend/generate_demo_annotation.py
+```
 
 ## 3. Run Batch Assignment
 
